@@ -4,16 +4,33 @@ Modern reimagining of Microsoft Research's **Terrarium 2.0** — an AI programmi
 
 ## Status
 
-**Phase 0** — Source control setup. No code yet.
+**Phase 1 MVP** ✅ — console simulation with text + JSON-Lines event streams.
+See [Plans/Phase1_Status.md](Plans/Phase1_Status.md) for what is and isn't implemented.
+
+Quick run:
+
+```bash
+dotnet run --project src/Terra.Console -- --ticks=100 --seed=42
+dotnet run --project src/Terra.Console -- --help
+```
+
+98 passing tests, 0 warnings.
 
 ## Project Structure
 
 ```
 Terra/
-├── Plans/              Design documents and modernization roadmap
+├── Plans/                      Design docs, game-rules extract, status
+├── src/
+│   ├── Terra.Engine/           Core simulation (no dependencies)
+│   ├── Terra.Behaviors.Default/  Reference Plant/Herbivore/Carnivore
+│   ├── Terra.Presentation.Text/  Human + JSON-Lines event formatters
+│   └── Terra.Console/          CLI entry point
+├── tests/
+│   └── Terra.Engine.Tests/     xUnit tests
 ├── legacy/
-│   └── Terrarium2.0/   Original MSR Terrarium 2.0 source (reference only)
-└── README.md
+│   └── Terrarium2.0/           Original MSR source (reference only)
+└── Terra.sln
 ```
 
 ## Roadmap
@@ -22,11 +39,11 @@ See [Plans/Terrarium2.0_Modernization.md](Plans/Terrarium2.0_Modernization.md) f
 
 High-level phases:
 
-- **Phase 0** — Source control, scaffolding *(current)*
-- **Phase 1** — Text-only MVP: simulation engine + text event stream, no graphics
-- **Phase 2** — User-loadable organism sandbox
-- **Phase 3** — Visual presentation layers (2D / 2.5D / 3D)
-- **Phase 4** — Networked multi-user ecosystem
+- **Phase 0** ✅ — Source control, scaffolding
+- **Phase 1** ✅ — Text-only MVP: simulation engine + text event stream, no graphics
+- **Phase 2** ⏸️ — User-loadable organism sandbox (also: Eat/Attack/Reproduce actions)
+- **Phase 3** ⏸️ — Visual presentation layers (2D / 2.5D / 3D)
+- **Phase 4** ⏸️ — Networked multi-user ecosystem
 
 ## Architectural principle
 

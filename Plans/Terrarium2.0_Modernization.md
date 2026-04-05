@@ -1,5 +1,9 @@
 # Terrarium 2.0 — Анализ и план модернизации (поэтапный)
 
+> **Текущий статус**: Phase 0 ✅ · Phase 1 MVP ✅ (see [Phase1_Status.md](Phase1_Status.md)) · Phase 2 ⏸️ не начат
+>
+> Ветка: `DEV-Console` · 98 passing tests · last commit `6768ec0`
+
 ## Что это
 
 Microsoft Research Terrarium 2.0 (~2003–2005) — учебная AI-песочница, где пользователи пишут организмы (C#/VB.NET), которые живут в общей экосистеме. Примерно 313 файлов, .NET 2.0, WinForms + DirectX 9, ASP.NET ASMX, SQL Server.
