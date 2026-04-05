@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Terra.Engine\Terra.Engine.csproj" />
+    <ProjectReference Include="..\..\src\Terra.Behaviors.Default\Terra.Behaviors.Default.csproj" />
   </ItemGroup>
 
 </Project>
