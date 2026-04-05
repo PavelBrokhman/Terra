@@ -41,6 +41,18 @@ public sealed class OrganismState
     /// </summary>
     public bool IsDefending { get; internal set; }
 
+    /// <summary>Ticks remaining before this organism may reproduce again. 0 = ready.</summary>
+    public int ReproductionWait { get; internal set; }
+
+    /// <summary>
+    /// Ticks remaining in the current incubation cycle. 0 = not reproducing.
+    /// When this reaches 0 after being positive, an offspring is spawned.
+    /// </summary>
+    public int IncubationTicksRemaining { get; internal set; }
+
+    /// <summary>True while an incubation cycle is in progress.</summary>
+    public bool IsIncubating => IncubationTicksRemaining > 0;
+
     internal OrganismState(
         OrganismId id,
         Species species,

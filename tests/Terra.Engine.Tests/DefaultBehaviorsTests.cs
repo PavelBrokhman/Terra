@@ -6,11 +6,13 @@ public class DefaultBehaviorsTests
 {
     private static OrganismSnapshot SelfSnap(Position pos, SpeciesKind kind = SpeciesKind.Herbivore) =>
         new(new OrganismId(1), "Self", kind, pos, Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal, FoodChunks: 100);
+            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal,
+            FoodChunks: 100, IsIncubating: false);
 
     private static OrganismSnapshot Other(OrganismId id, Position pos, SpeciesKind kind) =>
         new(id, $"X{id.Value}", kind, pos, Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal, FoodChunks: 100);
+            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal,
+            FoodChunks: 100, IsIncubating: false);
 
     private sealed class StubView(
         OrganismSnapshot self,

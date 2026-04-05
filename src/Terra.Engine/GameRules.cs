@@ -195,4 +195,24 @@ public static class GameRules
     /// </summary>
     public static bool InAttackRange(Position a, int radiusA, Position b, int radiusB) =>
         a.DistanceTo(b) <= radiusA + radiusB + 16;
+
+    /// <summary>
+    /// Ticks to wait between reproduction cycles. Plants: 25×radius, animals: 8×radius.
+    /// </summary>
+    public static int ReproductionWaitTicks(SpeciesKind kind, int radius) => kind switch
+    {
+        SpeciesKind.Plant => EngineConstants.PlantReproductionWaitPerUnitRadius * radius,
+        _                 => EngineConstants.AnimalReproductionWaitPerUnitRadius * radius,
+    };
+
+    /// <summary>
+    /// Per-tick incubation energy cost. Plants: radius × 187.5, animals: radius × 93.75.
+    /// Derived from <c>radius × Factor / 10 ticks × 1.5</c> multiplier
+    /// (EngineSettings:498-510).
+    /// </summary>
+    public static double IncubationEnergyPerTick(SpeciesKind kind, int radius) => kind switch
+    {
+        SpeciesKind.Plant => radius * 187.5,
+        _                 => radius * 93.75,
+    };
 }

@@ -32,6 +32,8 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
 
     public OrganismAction OnTick(IWorldView sense)
     {
+        var self = sense.Self;
+
         // 1. Defend against nearby threats first (predator in attack range).
         if (_threat is { } threatKind)
         {
@@ -39,20 +41,25 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
             {
                 if (other.Kind != threatKind) continue;
                 if (GameRules.InAttackRange(
-                        sense.Self.Position, sense.Self.Radius, other.Position, other.Radius))
+                        self.Position, self.Radius, other.Position, other.Radius))
                 {
                     return new DefendAction(other.Id);
                 }
             }
         }
 
-        // 2. Seek nearest visible prey.
+        // 2. Reproduce when mature, well-fed, and not already incubating.
+        //    Engine checks ReproductionWait cooldown and silently refuses if not ready.
+        if (self.IsMature && self.EnergyState >= EnergyState.Normal && !self.IsIncubating)
+            return ReproduceAction.Instance;
+
+        // 3. Seek nearest visible prey.
         OrganismSnapshot? nearest = null;
         var nearestDist = double.MaxValue;
         foreach (var other in sense.Visible)
         {
             if (other.Kind != _prey) continue;
-            var d = other.Position.DistanceTo(sense.Self.Position);
+            var d = other.Position.DistanceTo(self.Position);
             if (d < nearestDist)
             {
                 nearestDist = d;
@@ -63,13 +70,13 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
         if (nearest is { } target)
         {
             _wanderTarget = null;
-            if (InRange(sense.Self, target)) return OnInRange(target);
+            if (InRange(self, target)) return OnInRange(target);
             // int.MaxValue is clamped by the engine to the organism's MaxSpeed.
             return new MoveAction(target.Position, Speed: int.MaxValue);
         }
 
-        // 3. No prey visible — wander.
-        if (_wanderTarget is null || HasArrived(sense.Self.Position, _wanderTarget.Value))
+        // 4. No prey visible — wander.
+        if (_wanderTarget is null || HasArrived(self.Position, _wanderTarget.Value))
         {
             _wanderTarget = new Position(
                 _rng.Next(0, sense.WorldWidth),

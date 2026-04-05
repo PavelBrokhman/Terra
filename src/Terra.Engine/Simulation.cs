@@ -64,6 +64,7 @@ public sealed class Simulation
 
         ApplyMetabolismAndAging(order);
         ApplyGrowth(order);
+        ApplyReproduction(order);
         ApplyBehaviorActions(order);
         CollectDeaths(order);
 
@@ -193,7 +194,10 @@ public sealed class Simulation
                 state.IsDefending = true;
                 break;
 
-            // Reproduce: future step.
+            case ReproduceAction:
+                ApplyReproduceStart(state);
+                break;
+
             default:
                 break;
         }
@@ -253,6 +257,67 @@ public sealed class Simulation
 
         _bus.Publish(new OrganismAte(
             _world.Tick, eater.Id, target.Id, chunks, energyGained, target.FoodChunks));
+    }
+
+    private void ApplyReproduction(List<OrganismId> order)
+    {
+        foreach (var id in order)
+        {
+            if (!_world.TryGetOrganism(id, out var state) || !state.IsAlive) continue;
+
+            // Cooldown decrement for non-incubating.
+            if (!state.IsIncubating)
+            {
+                if (state.ReproductionWait > 0) state.ReproductionWait--;
+                continue;
+            }
+
+            // Incubation requires Normal+ energy; otherwise pause (no decrement).
+            var energyState = GameRules.ClassifyEnergyState(
+                state.Energy, state.Species.Traits, state.Radius);
+            if (energyState < EnergyState.Normal) continue;
+
+            var cost = GameRules.IncubationEnergyPerTick(state.Species.Kind, state.Radius);
+            if (state.Energy < cost) continue;
+
+            state.Energy -= cost;
+            state.IncubationTicksRemaining--;
+
+            if (state.IncubationTicksRemaining == 0)
+            {
+                SpawnOffspring(state);
+                state.ReproductionWait = GameRules.ReproductionWaitTicks(
+                    state.Species.Kind, state.Radius);
+            }
+        }
+    }
+
+    private void ApplyReproduceStart(OrganismState state)
+    {
+        if (state.IsIncubating) return;
+        if (!state.IsMature) return;
+        if (state.ReproductionWait > 0) return;
+        var energyState = GameRules.ClassifyEnergyState(
+            state.Energy, state.Species.Traits, state.Radius);
+        if (energyState < EnergyState.Normal) return;
+
+        state.IncubationTicksRemaining = EngineConstants.TicksToIncubate;
+    }
+
+    private void SpawnOffspring(OrganismState parent)
+    {
+        // Find a random position for the offspring (no collision check in Phase 2).
+        var x = _rng.Next(0, _world.Width);
+        var y = _rng.Next(0, _world.Height);
+        var babyEnergy = GameRules.MaxEnergy(parent.Species.Traits, 1) / 2.0;
+        var baby = _world.AddOrganism(
+            parent.Species, new Position(x, y),
+            radius: 1, energy: babyEnergy,
+            generation: parent.Generation + 1);
+        _behaviors[baby.Id] = _behaviors[parent.Id]; // shares parent's behavior instance
+        _bus.Publish(new OrganismBorn(
+            _world.Tick, baby.Id, parent.Species.Name, parent.Species.Kind,
+            baby.Position, baby.Radius, baby.Generation));
     }
 
     private void ApplyAttack(OrganismState attacker, AttackAction attack)
@@ -346,7 +411,8 @@ public sealed class Simulation
         s.TickAge,
         s.IsMature,
         GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius),
-        s.FoodChunks);
+        s.FoodChunks,
+        s.IsIncubating);
 
     private sealed class WorldViewImpl(
         OrganismSnapshot self,

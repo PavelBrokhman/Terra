@@ -45,6 +45,7 @@ public sealed class World
         var id = new OrganismId(_nextId++);
         var foodChunks = GameRules.InitialFoodChunks(species.Kind, radius);
         var state = new OrganismState(id, species, position, radius, energy, generation, foodChunks);
+        state.ReproductionWait = GameRules.ReproductionWaitTicks(species.Kind, radius);
         _organisms.Add(id, state);
         _grid.Add(id, position);
         return state;
