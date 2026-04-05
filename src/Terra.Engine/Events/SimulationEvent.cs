@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Terra.Engine.Events;
 
 /// <summary>
@@ -8,5 +10,16 @@ namespace Terra.Engine.Events;
 ///
 /// All events carry the tick at which they occurred. Timestamps are
 /// tick-based, never wall-clock, to preserve determinism and replay fidelity.
+///
+/// The <see cref="JsonPolymorphic"/> metadata makes this type part of the
+/// JSON-Lines schema: every serialized event carries a "type" discriminator
+/// naming its concrete subclass.
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(SimulationStarted), nameof(SimulationStarted))]
+[JsonDerivedType(typeof(SimulationEnded), nameof(SimulationEnded))]
+[JsonDerivedType(typeof(TickCompleted), nameof(TickCompleted))]
+[JsonDerivedType(typeof(OrganismBorn), nameof(OrganismBorn))]
+[JsonDerivedType(typeof(OrganismMoved), nameof(OrganismMoved))]
+[JsonDerivedType(typeof(OrganismDied), nameof(OrganismDied))]
 public abstract record SimulationEvent(int Tick);
