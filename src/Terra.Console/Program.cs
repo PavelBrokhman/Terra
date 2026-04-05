@@ -42,8 +42,11 @@ void SpawnOne(Species species, IOrganismBehavior behavior)
 {
     var x = spawnRng.Next(0, world.Width);
     var y = spawnRng.Next(0, world.Height);
-    var radius = species.MatureRadius;
-    var energy = GameRules.MaxEnergy(species.Traits, radius) / 2;
+    var radius = opts.Infant ? 1 : species.MatureRadius;
+    // Give them enough energy to start growing (well above GrowthEnergyCost).
+    var energy = opts.Infant
+        ? GameRules.MaxEnergy(species.Traits, species.MatureRadius) / 2
+        : GameRules.MaxEnergy(species.Traits, radius) / 2;
     sim.Spawn(species, behavior, new Position(x, y), radius, energy);
 }
 

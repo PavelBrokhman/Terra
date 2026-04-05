@@ -25,6 +25,9 @@ public sealed class OrganismState
     /// </summary>
     public int FoodChunks { get; internal set; }
 
+    /// <summary>Ticks remaining until the organism may grow again. 0 = ready.</summary>
+    public int GrowthWait { get; internal set; }
+
     internal OrganismState(
         OrganismId id,
         Species species,

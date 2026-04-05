@@ -128,4 +128,22 @@ public static class GameRules
     /// <summary>Two organisms are in eating contact if their radii touch (with a 2-pixel buffer).</summary>
     public static bool InEatingRange(Position a, int radiusA, Position b, int radiusB) =>
         a.DistanceTo(b) <= radiusA + radiusB + 2;
+
+    /// <summary>
+    /// Energy required to grow by one radius unit. Constant per step
+    /// (3,808 ≈ MaxEnergyBasePerUnitRadius/5).
+    /// </summary>
+    public static double GrowthEnergyCost =>
+        EngineConstants.MaxEnergyBasePerUnitRadius / 5.0;
+
+    /// <summary>
+    /// Ticks between growth events for this species. Chosen so that an
+    /// organism growing from radius 1 to <see cref="Species.MatureRadius"/>
+    /// matures after <c>LifeSpan / 2</c> ticks (legacy parity).
+    /// </summary>
+    public static int GrowthCooldown(Species species)
+    {
+        var stepsNeeded = Math.Max(1, species.MatureRadius - 1);
+        return Math.Max(1, LifeSpan(species) / 2 / stepsNeeded);
+    }
 }

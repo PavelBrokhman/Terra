@@ -63,6 +63,7 @@ public sealed class Simulation
             .ToList();
 
         ApplyMetabolismAndAging(order);
+        ApplyGrowth(order);
         ApplyBehaviorActions(order);
         CollectDeaths(order);
 
@@ -124,6 +125,28 @@ public sealed class Simulation
 
             state.Energy = Math.Min(maxEnergy, state.Energy + gain) - cost;
             if (state.Energy < 0) state.Energy = 0;
+        }
+    }
+
+    private void ApplyGrowth(List<OrganismId> order)
+    {
+        var growthCost = GameRules.GrowthEnergyCost;
+        foreach (var id in order)
+        {
+            if (!_world.TryGetOrganism(id, out var state) || !state.IsAlive) continue;
+            if (state.Radius >= state.Species.MatureRadius) continue;
+            if (state.GrowthWait > 0) { state.GrowthWait--; continue; }
+            if (state.Energy < growthCost) continue;
+
+            state.Energy -= growthCost;
+            state.Radius++;
+            state.FoodChunks += state.Species.Kind == SpeciesKind.Plant
+                ? EngineConstants.PlantFoodChunksPerUnitRadius
+                : EngineConstants.FoodChunksPerUnitRadius;
+            state.GrowthWait = GameRules.GrowthCooldown(state.Species);
+
+            _bus.Publish(new OrganismGrown(
+                _world.Tick, id, state.Radius, state.FoodChunks, growthCost));
         }
     }
 

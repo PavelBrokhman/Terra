@@ -40,6 +40,9 @@ public sealed class HumanTextFormatter : IEventFormatter
                 $"{t} Ate: {a.EaterId} → {a.TargetId} chunks={a.ChunksEaten} " +
                 $"(+{a.EnergyGained:F0} energy, target remaining={a.TargetChunksRemaining})",
 
+            OrganismGrown g =>
+                $"{t} Grown: {g.Id} r={g.NewRadius} chunks={g.NewFoodChunks} (cost={g.EnergyCost:F0})",
+
             _ => $"{t} {evt.GetType().Name}",
         };
     }

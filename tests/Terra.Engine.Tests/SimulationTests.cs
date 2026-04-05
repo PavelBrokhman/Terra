@@ -102,12 +102,14 @@ public class SimulationTests
             CamouflagePoints = 0, MatureSize = 30,
         };
         var sp = new Species("P", SpeciesKind.Plant, traits);
-        var maxEnergy = GameRules.MaxEnergy(traits, 5); // (19040)*5 = 95,200
-        var id = sim.Spawn(sp, new IdleBehavior(), new Position(50, 50), 5, maxEnergy);
-        // cost=5, gain=550 → would overflow. Capped then minus cost.
+        // Spawn at matureRadius so growth does not interfere with the cap test.
+        var radius = sp.MatureRadius;   // = 15
+        var maxEnergy = GameRules.MaxEnergy(traits, radius);
+        var id = sim.Spawn(sp, new IdleBehavior(), new Position(50, 50), radius, maxEnergy);
+        // cost=radius, gain=550. Start at max → gain is capped, then minus cost.
         sim.TickOnce();
         world.TryGetOrganism(id, out var state);
-        Assert.Equal(maxEnergy - 5, state.Energy);
+        Assert.Equal(maxEnergy - radius, state.Energy);
     }
 
     [Fact]

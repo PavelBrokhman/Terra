@@ -17,6 +17,7 @@ internal sealed record RunOptions
     public int CarnivoreCount { get; init; } = 3;
     public string? JsonFile { get; init; }
     public bool Quiet { get; init; }
+    public bool Infant { get; init; }
 
     public static RunOptions Parse(string[] args)
     {
@@ -52,6 +53,7 @@ internal sealed record RunOptions
             CarnivoreCount = IntOf("carnivores", 3),
             JsonFile = StrOf("json-file"),
             Quiet = dict.ContainsKey("quiet"),
+            Infant = dict.ContainsKey("infant"),
         };
     }
 
@@ -68,6 +70,7 @@ internal sealed record RunOptions
           --carnivores=N         initial carnivore count (default 3)
           --json-file=PATH       also write JSON-Lines event stream to file
           --quiet                suppress per-tick summary lines
+          --infant               spawn initial population at radius=1 (shows growth)
           --help                 show this message
         """;
 }
