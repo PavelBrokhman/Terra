@@ -4,9 +4,11 @@ namespace Terra.Engine.Tests;
 
 public class DefaultBehaviorsTests
 {
+    // Tests target specific actions (idle/move/eat/attack/defend); making
+    // self immature avoids triggering the reproduction branch.
     private static OrganismSnapshot SelfSnap(Position pos, SpeciesKind kind = SpeciesKind.Herbivore) =>
         new(new OrganismId(1), "Self", kind, pos, Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal,
+            TickAge: 0, IsMature: false, EnergyState: EnergyState.Normal,
             FoodChunks: 100, IsIncubating: false);
 
     private static OrganismSnapshot Other(OrganismId id, Position pos, SpeciesKind kind) =>
