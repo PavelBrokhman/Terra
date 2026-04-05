@@ -3,10 +3,16 @@ using Terra.Engine;
 namespace Terra.Behaviors.Default;
 
 /// <summary>
-/// Reference carnivore: seeks the nearest visible Herbivore; wanders when none visible.
-/// Once Attack/Eat are implemented (later step), it will hunt and consume prey.
+/// Reference carnivore: no threats (top predator); seeks the nearest visible
+/// Herbivore and attacks on contact.
 /// </summary>
 public sealed class DefaultCarnivore : WanderingSeekerBehavior
 {
-    public DefaultCarnivore(Random rng) : base(SpeciesKind.Herbivore, rng) { }
+    public DefaultCarnivore(Random rng) : base(SpeciesKind.Herbivore, threat: null, rng) { }
+
+    protected override bool InRange(OrganismSnapshot self, OrganismSnapshot target) =>
+        GameRules.InAttackRange(self.Position, self.Radius, target.Position, target.Radius);
+
+    protected override OrganismAction OnInRange(OrganismSnapshot target) =>
+        new AttackAction(target.Id);
 }

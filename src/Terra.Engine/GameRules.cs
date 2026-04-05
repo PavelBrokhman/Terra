@@ -146,4 +146,53 @@ public static class GameRules
         var stepsNeeded = Math.Max(1, species.MatureRadius - 1);
         return Math.Max(1, LifeSpan(species) / 2 / stepsNeeded);
     }
+
+    /// <summary>
+    /// Maximum attack damage this organism can inflict in a single hit:
+    /// (50 + (points/100) × 25) × radius, ×2 for carnivores.
+    /// </summary>
+    public static int MaxAttackDamage(SpeciesTraits traits, int radius, SpeciesKind kind)
+    {
+        var perRadius = EngineConstants.BaseInflictedDamagePerUnitRadius
+            + traits.AttackDamagePoints / 100.0 * EngineConstants.MaximumInflictedDamagePerUnitRadius;
+        var total = (int)(perRadius * radius);
+        return kind == SpeciesKind.Carnivore
+            ? total * EngineConstants.CarnivoreAttackDefendMultiplier
+            : total;
+    }
+
+    /// <summary>
+    /// Maximum defense damage this organism can absorb in a single hit:
+    /// (50 + (points/100) × 25) × radius, ×2 for carnivores.
+    /// </summary>
+    public static int MaxDefenseDamage(SpeciesTraits traits, int radius, SpeciesKind kind)
+    {
+        var perRadius = EngineConstants.BaseDefendedDamagePerUnitRadius
+            + traits.DefendDamagePoints / 100.0 * EngineConstants.MaximumDefendedDamagePerUnitRadius;
+        var total = (int)(perRadius * radius);
+        return kind == SpeciesKind.Carnivore
+            ? total * EngineConstants.CarnivoreAttackDefendMultiplier
+            : total;
+    }
+
+    /// <summary>
+    /// Total cumulative damage needed to kill an organism: 190 × radius
+    /// (EngineSettings:363).
+    /// </summary>
+    public static int DamageToKill(int radius) =>
+        EngineConstants.DamageToKillPerUnitRadius * radius;
+
+    /// <summary>
+    /// Can <paramref name="attacker"/> attack <paramref name="target"/>?
+    /// Animals attack animals; plants are not combat participants.
+    /// </summary>
+    public static bool CanAttack(SpeciesKind attacker, SpeciesKind target) =>
+        attacker != SpeciesKind.Plant && target != SpeciesKind.Plant;
+
+    /// <summary>
+    /// Attack range: roughly 1 grid cell of slack on top of radii contact
+    /// (EngineSettings cell size = 8, original "within 1 grid rectangle").
+    /// </summary>
+    public static bool InAttackRange(Position a, int radiusA, Position b, int radiusB) =>
+        a.DistanceTo(b) <= radiusA + radiusB + 16;
 }

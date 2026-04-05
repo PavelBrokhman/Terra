@@ -43,6 +43,11 @@ public sealed class HumanTextFormatter : IEventFormatter
             OrganismGrown g =>
                 $"{t} Grown: {g.Id} r={g.NewRadius} chunks={g.NewFoodChunks} (cost={g.EnergyCost:F0})",
 
+            OrganismAttacked at =>
+                $"{t} Attack: {at.AttackerId} → {at.TargetId} " +
+                $"atk={at.AttackRoll} def={at.DefenseRoll}{(at.TargetWasDefending ? "*" : "")} " +
+                $"damage={at.DamageDealt} (total={at.TargetDamageTotal})",
+
             _ => $"{t} {evt.GetType().Name}",
         };
     }

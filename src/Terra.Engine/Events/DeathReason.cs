@@ -9,7 +9,7 @@ public enum DeathReason
     /// <summary>Energy reached 0 (see Terrarium's PopulationChangeReason.Starved).</summary>
     Starvation,
 
-    /// <summary>Killed in combat by another organism.</summary>
+    /// <summary>Cumulative attack damage reached 190 × radius.</summary>
     Killed,
 
     /// <summary>TickAge exceeded lifespan (PopulationChangeReason.OldAge).</summary>

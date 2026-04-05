@@ -28,6 +28,19 @@ public sealed class OrganismState
     /// <summary>Ticks remaining until the organism may grow again. 0 = ready.</summary>
     public int GrowthWait { get; internal set; }
 
+    /// <summary>
+    /// Cumulative damage received from attacks. When this reaches
+    /// <c>190 × Radius</c>, the organism dies with
+    /// <see cref="Events.DeathReason.Killed"/>.
+    /// </summary>
+    public int DamageTaken { get; internal set; }
+
+    /// <summary>
+    /// True this tick if the organism issued a <see cref="DefendAction"/>.
+    /// Reset at the start of each behavior phase.
+    /// </summary>
+    public bool IsDefending { get; internal set; }
+
     internal OrganismState(
         OrganismId id,
         Species species,

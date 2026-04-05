@@ -50,13 +50,30 @@ public class DefaultBehaviorsTests
         var self = SelfSnap(new Position(100, 100));                              // r=5
         var far = Other(new OrganismId(10), new Position(180, 180), SpeciesKind.Plant);
         var near = Other(new OrganismId(11), new Position(140, 100), SpeciesKind.Plant); // d=40 > 12
-        var carnivore = Other(new OrganismId(12), new Position(108, 100), SpeciesKind.Carnivore); // ignored
+        // Distant carnivore: distance 60 > attack range 26. Not a threat.
+        var carnivore = Other(new OrganismId(12), new Position(160, 100), SpeciesKind.Carnivore);
         var view = new StubView(self, new[] { far, near, carnivore });
 
         var action = behavior.OnTick(view);
 
         var move = Assert.IsType<MoveAction>(action);
         Assert.Equal(new Position(140, 100), move.Target);
+    }
+
+    [Fact]
+    public void DefaultHerbivore_DefendsAgainstNearbyCarnivore()
+    {
+        var behavior = new DefaultHerbivore(new Random(42));
+        var self = SelfSnap(new Position(100, 100));
+        // Carnivore at distance 20 → attack range 5+5+16=26, in range.
+        var carnivore = Other(new OrganismId(12), new Position(120, 100), SpeciesKind.Carnivore);
+        var plant = Other(new OrganismId(11), new Position(140, 100), SpeciesKind.Plant);
+        var view = new StubView(self, new[] { carnivore, plant });
+
+        var action = behavior.OnTick(view);
+
+        var defend = Assert.IsType<DefendAction>(action);
+        Assert.Equal(new OrganismId(12), defend.Against);
     }
 
     [Fact]
@@ -90,17 +107,31 @@ public class DefaultBehaviorsTests
 
     // ── DefaultCarnivore ─────────────────────────────────────────────────
     [Fact]
-    public void DefaultCarnivore_SeeksNearestHerbivore()
+    public void DefaultCarnivore_MovesTowardsHerbivore_WhenOutOfAttackRange()
     {
         var behavior = new DefaultCarnivore(new Random(42));
         var self = SelfSnap(new Position(100, 100), SpeciesKind.Carnivore);
         var plant = Other(new OrganismId(10), new Position(105, 100), SpeciesKind.Plant); // ignored
-        var herb = Other(new OrganismId(11), new Position(120, 100), SpeciesKind.Herbivore);
+        // Distance 40 > attack range 26.
+        var herb = Other(new OrganismId(11), new Position(140, 100), SpeciesKind.Herbivore);
         var view = new StubView(self, new[] { plant, herb });
 
         var action = behavior.OnTick(view);
         var move = Assert.IsType<MoveAction>(action);
-        Assert.Equal(new Position(120, 100), move.Target);
+        Assert.Equal(new Position(140, 100), move.Target);
+    }
+
+    [Fact]
+    public void DefaultCarnivore_AttacksHerbivore_WhenInAttackRange()
+    {
+        var behavior = new DefaultCarnivore(new Random(42));
+        var self = SelfSnap(new Position(100, 100), SpeciesKind.Carnivore);
+        var herb = Other(new OrganismId(11), new Position(120, 100), SpeciesKind.Herbivore); // d=20 ≤ 26
+        var view = new StubView(self, new[] { herb });
+
+        var action = behavior.OnTick(view);
+        var attack = Assert.IsType<AttackAction>(action);
+        Assert.Equal(new OrganismId(11), attack.Target);
     }
 
     // ── Determinism ──────────────────────────────────────────────────────

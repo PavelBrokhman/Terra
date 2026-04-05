@@ -4,9 +4,8 @@ namespace Terra.Behaviors.Default;
 
 /// <summary>
 /// Shared core for <see cref="DefaultHerbivore"/> and <see cref="DefaultCarnivore"/>:
-/// seek the nearest visible organism of the configured prey kind; when none
-/// is visible, wander toward a random world point until reached, then pick
-/// a new one.
+/// watch for threats and defend, otherwise seek the nearest visible prey of
+/// the configured kind and wander when none is visible.
 ///
 /// Implemented as a <see cref="IOrganismBehavior"/> like any user creature —
 /// the engine has no special path for these.
@@ -14,18 +13,40 @@ namespace Terra.Behaviors.Default;
 public abstract class WanderingSeekerBehavior : IOrganismBehavior
 {
     private readonly SpeciesKind _prey;
+    private readonly SpeciesKind? _threat;
     private readonly Random _rng;
     private Position? _wanderTarget;
 
-    protected WanderingSeekerBehavior(SpeciesKind prey, Random rng)
+    protected WanderingSeekerBehavior(SpeciesKind prey, SpeciesKind? threat, Random rng)
     {
         _prey = prey;
+        _threat = threat;
         _rng = rng ?? throw new ArgumentNullException(nameof(rng));
     }
 
+    /// <summary>True if <paramref name="target"/> is close enough for the subclass's in-range action.</summary>
+    protected abstract bool InRange(OrganismSnapshot self, OrganismSnapshot target);
+
+    /// <summary>Action to emit when prey is in range.</summary>
+    protected abstract OrganismAction OnInRange(OrganismSnapshot target);
+
     public OrganismAction OnTick(IWorldView sense)
     {
-        // 1. Seek nearest visible prey.
+        // 1. Defend against nearby threats first (predator in attack range).
+        if (_threat is { } threatKind)
+        {
+            foreach (var other in sense.Visible)
+            {
+                if (other.Kind != threatKind) continue;
+                if (GameRules.InAttackRange(
+                        sense.Self.Position, sense.Self.Radius, other.Position, other.Radius))
+                {
+                    return new DefendAction(other.Id);
+                }
+            }
+        }
+
+        // 2. Seek nearest visible prey.
         OrganismSnapshot? nearest = null;
         var nearestDist = double.MaxValue;
         foreach (var other in sense.Visible)
@@ -42,18 +63,12 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
         if (nearest is { } target)
         {
             _wanderTarget = null;
-            // If we're in eating contact, bite; otherwise close the distance.
-            if (Terra.Engine.GameRules.InEatingRange(
-                    sense.Self.Position, sense.Self.Radius,
-                    target.Position, target.Radius))
-            {
-                return new EatAction(target.Id);
-            }
+            if (InRange(sense.Self, target)) return OnInRange(target);
             // int.MaxValue is clamped by the engine to the organism's MaxSpeed.
             return new MoveAction(target.Position, Speed: int.MaxValue);
         }
 
-        // 2. No prey visible — wander.
+        // 3. No prey visible — wander.
         if (_wanderTarget is null || HasArrived(sense.Self.Position, _wanderTarget.Value))
         {
             _wanderTarget = new Position(

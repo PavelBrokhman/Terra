@@ -152,6 +152,12 @@ public sealed class Simulation
 
     private void ApplyBehaviorActions(List<OrganismId> order)
     {
+        // Reset per-tick defensive stance before actions are evaluated.
+        foreach (var id in order)
+        {
+            if (_world.TryGetOrganism(id, out var state)) state.IsDefending = false;
+        }
+
         foreach (var id in order)
         {
             if (!_world.TryGetOrganism(id, out var state) || !state.IsAlive) continue;
@@ -179,7 +185,15 @@ public sealed class Simulation
                 ApplyEat(state, eat);
                 break;
 
-            // Attack/Defend/Reproduce: future steps.
+            case AttackAction attack:
+                ApplyAttack(state, attack);
+                break;
+
+            case DefendAction:
+                state.IsDefending = true;
+                break;
+
+            // Reproduce: future step.
             default:
                 break;
         }
@@ -241,6 +255,30 @@ public sealed class Simulation
             _world.Tick, eater.Id, target.Id, chunks, energyGained, target.FoodChunks));
     }
 
+    private void ApplyAttack(OrganismState attacker, AttackAction attack)
+    {
+        if (!_world.TryGetOrganism(attack.Target, out var target) || !target.IsAlive) return;
+        if (!GameRules.CanAttack(attacker.Species.Kind, target.Species.Kind)) return;
+        if (!GameRules.InAttackRange(attacker.Position, attacker.Radius, target.Position, target.Radius)) return;
+
+        var attackMax = GameRules.MaxAttackDamage(
+            attacker.Species.Traits, attacker.Radius, attacker.Species.Kind);
+        var defenseMax = GameRules.MaxDefenseDamage(
+            target.Species.Traits, target.Radius, target.Species.Kind);
+
+        // Rolls are inclusive 0..max (Next(0, max+1)).
+        var attackRoll = _rng.Next(0, attackMax + 1);
+        var defenseRoll = _rng.Next(0, defenseMax + 1);
+        if (target.IsDefending) defenseRoll = Math.Min(defenseMax, defenseRoll * 2);
+
+        var damage = Math.Max(0, attackRoll - defenseRoll);
+        target.DamageTaken += damage;
+
+        _bus.Publish(new OrganismAttacked(
+            _world.Tick, attacker.Id, target.Id,
+            attackRoll, defenseRoll, damage, target.DamageTaken, target.IsDefending));
+    }
+
     private void CollectDeaths(List<OrganismId> order)
     {
         foreach (var id in order)
@@ -250,6 +288,8 @@ public sealed class Simulation
             DeathReason? reason = null;
             if (state.FoodChunks <= 0)
                 reason = DeathReason.Eaten;
+            else if (state.DamageTaken >= GameRules.DamageToKill(state.Radius))
+                reason = DeathReason.Killed;
             else if (state.Energy <= 0)
                 reason = DeathReason.Starvation;
             else if (state.TickAge > GameRules.LifeSpan(state.Species))
