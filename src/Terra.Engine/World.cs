@@ -43,7 +43,8 @@ public sealed class World
         if (energy < 0) throw new ArgumentOutOfRangeException(nameof(energy), energy, "must be ≥ 0");
 
         var id = new OrganismId(_nextId++);
-        var state = new OrganismState(id, species, position, radius, energy, generation);
+        var foodChunks = GameRules.InitialFoodChunks(species.Kind, radius);
+        var state = new OrganismState(id, species, position, radius, energy, generation, foodChunks);
         _organisms.Add(id, state);
         _grid.Add(id, position);
         return state;

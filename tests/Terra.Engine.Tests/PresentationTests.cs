@@ -32,6 +32,17 @@ public class PresentationTests
     }
 
     [Fact]
+    public void HumanFormatter_OrganismAte_IncludesDetails()
+    {
+        var f = new HumanTextFormatter();
+        var line = f.Format(new OrganismAte(
+            15, new OrganismId(3), new OrganismId(7), ChunksEaten: 50,
+            EnergyGained: 48.5, TargetChunksRemaining: 200));
+        Assert.Equal(
+            "[t=0015] Ate: #3 → #7 chunks=50 (+48 energy, target remaining=200)", line);
+    }
+
+    [Fact]
     public void HumanFormatter_OrganismDied_IncludesReason()
     {
         var f = new HumanTextFormatter();

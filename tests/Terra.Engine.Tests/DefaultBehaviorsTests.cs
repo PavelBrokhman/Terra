@@ -6,11 +6,11 @@ public class DefaultBehaviorsTests
 {
     private static OrganismSnapshot SelfSnap(Position pos, SpeciesKind kind = SpeciesKind.Herbivore) =>
         new(new OrganismId(1), "Self", kind, pos, Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal);
+            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal, FoodChunks: 100);
 
     private static OrganismSnapshot Other(OrganismId id, Position pos, SpeciesKind kind) =>
         new(id, $"X{id.Value}", kind, pos, Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal);
+            TickAge: 0, IsMature: true, EnergyState: EnergyState.Normal, FoodChunks: 100);
 
     private sealed class StubView(
         OrganismSnapshot self,
@@ -44,19 +44,34 @@ public class DefaultBehaviorsTests
     }
 
     [Fact]
-    public void DefaultHerbivore_SeeksNearestPlant()
+    public void DefaultHerbivore_SeeksNearestPlant_MovesWhenOutOfRange()
     {
         var behavior = new DefaultHerbivore(new Random(42));
-        var self = SelfSnap(new Position(100, 100));
+        var self = SelfSnap(new Position(100, 100));                              // r=5
         var far = Other(new OrganismId(10), new Position(180, 180), SpeciesKind.Plant);
-        var near = Other(new OrganismId(11), new Position(110, 100), SpeciesKind.Plant);
-        var carnivore = Other(new OrganismId(12), new Position(101, 100), SpeciesKind.Carnivore); // ignored
+        var near = Other(new OrganismId(11), new Position(140, 100), SpeciesKind.Plant); // d=40 > 12
+        var carnivore = Other(new OrganismId(12), new Position(108, 100), SpeciesKind.Carnivore); // ignored
         var view = new StubView(self, new[] { far, near, carnivore });
 
         var action = behavior.OnTick(view);
 
         var move = Assert.IsType<MoveAction>(action);
-        Assert.Equal(new Position(110, 100), move.Target);
+        Assert.Equal(new Position(140, 100), move.Target);
+    }
+
+    [Fact]
+    public void DefaultHerbivore_EatsPlant_WhenAdjacent()
+    {
+        var behavior = new DefaultHerbivore(new Random(42));
+        var self = SelfSnap(new Position(100, 100));                               // r=5
+        // Plant at distance 10, eat range = 5+5+2 = 12 → in range.
+        var plant = Other(new OrganismId(11), new Position(110, 100), SpeciesKind.Plant);
+        var view = new StubView(self, new[] { plant });
+
+        var action = behavior.OnTick(view);
+
+        var eat = Assert.IsType<EatAction>(action);
+        Assert.Equal(new OrganismId(11), eat.Target);
     }
 
     [Fact]

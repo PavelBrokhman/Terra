@@ -14,4 +14,7 @@ public enum DeathReason
 
     /// <summary>TickAge exceeded lifespan (PopulationChangeReason.OldAge).</summary>
     OldAge,
+
+    /// <summary>Consumed by another organism — all food chunks depleted.</summary>
+    Eaten,
 }

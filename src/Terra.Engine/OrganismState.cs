@@ -17,13 +17,22 @@ public sealed class OrganismState
     public int TickAge { get; internal set; }
     public bool IsAlive { get; internal set; } = true;
 
+    /// <summary>
+    /// Remaining food chunks an eater can take from this organism. Initialized
+    /// at spawn from <see cref="GameRules.InitialFoodChunks"/> and decremented
+    /// when eaten. When this reaches 0, the organism dies with
+    /// <see cref="Events.DeathReason.Eaten"/>.
+    /// </summary>
+    public int FoodChunks { get; internal set; }
+
     internal OrganismState(
         OrganismId id,
         Species species,
         Position position,
         int radius,
         double energy,
-        int generation)
+        int generation,
+        int foodChunks)
     {
         Id = id;
         Species = species;
@@ -31,6 +40,7 @@ public sealed class OrganismState
         Radius = radius;
         Energy = energy;
         Generation = generation;
+        FoodChunks = foodChunks;
     }
 
     public bool IsMature => Radius >= Species.MatureRadius;

@@ -88,4 +88,44 @@ public static class GameRules
     /// <summary>Movement energy cost: distance × radius × speed × 0.005.</summary>
     public static double MovementEnergyCost(int radius, double distance, int speed) =>
         distance * radius * speed * EngineConstants.RequiredEnergyPerUnitRadiusSpeedDistance;
+
+    /// <summary>
+    /// Total food chunks this organism holds at its current radius.
+    /// Plants: 50 × radius (EngineSettings:392). Animals: 25 × radius (EngineSettings:345).
+    /// </summary>
+    public static int InitialFoodChunks(SpeciesKind kind, int radius) => kind switch
+    {
+        SpeciesKind.Plant => EngineConstants.PlantFoodChunksPerUnitRadius * radius,
+        _                 => EngineConstants.FoodChunksPerUnitRadius * radius,
+    };
+
+    /// <summary>
+    /// How many chunks an eater can consume in a single bite, from their
+    /// EatingSpeed trait and current radius.
+    /// chunks = (1 + (points/100) × 99) × radius.
+    /// </summary>
+    public static int EatingChunksPerBite(SpeciesTraits eaterTraits, int eaterRadius)
+    {
+        var perUnitRadius = EngineConstants.BaseEatingSpeedPerUnitRadius
+            + eaterTraits.EatingSpeedPoints / 100.0
+              * (EngineConstants.MaximumEatingSpeedPerUnitRadius
+                 - EngineConstants.BaseEatingSpeedPerUnitRadius);
+        return (int)(perUnitRadius * eaterRadius);
+    }
+
+    /// <summary>
+    /// Can <paramref name="eater"/> eat <paramref name="target"/>?
+    /// Phase 2 Step 1: herbivores eat plants. Other combinations will be added
+    /// as Attack + carcass mechanics arrive.
+    /// </summary>
+    public static bool CanEat(SpeciesKind eater, SpeciesKind target) =>
+        (eater, target) switch
+        {
+            (SpeciesKind.Herbivore, SpeciesKind.Plant) => true,
+            _ => false,
+        };
+
+    /// <summary>Two organisms are in eating contact if their radii touch (with a 2-pixel buffer).</summary>
+    public static bool InEatingRange(Position a, int radiusA, Position b, int radiusB) =>
+        a.DistanceTo(b) <= radiusA + radiusB + 2;
 }

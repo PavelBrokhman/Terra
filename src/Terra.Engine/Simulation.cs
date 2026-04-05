@@ -152,8 +152,11 @@ public sealed class Simulation
                 ApplyMove(state, move);
                 break;
 
-            // Eat/Attack/Defend/Reproduce: future steps.
-            // Silently treated as Idle for now.
+            case EatAction eat:
+                ApplyEat(state, eat);
+                break;
+
+            // Attack/Defend/Reproduce: future steps.
             default:
                 break;
         }
@@ -191,6 +194,30 @@ public sealed class Simulation
         _bus.Publish(new OrganismMoved(_world.Tick, state.Id, from, to));
     }
 
+    private void ApplyEat(OrganismState eater, EatAction eat)
+    {
+        if (!_world.TryGetOrganism(eat.Target, out var target) || !target.IsAlive) return;
+        if (!GameRules.CanEat(eater.Species.Kind, target.Species.Kind)) return;
+        if (!GameRules.InEatingRange(eater.Position, eater.Radius, target.Position, target.Radius)) return;
+
+        // Full eaters refuse to eat (matches original Terrarium's eating rule).
+        var eaterState = GameRules.ClassifyEnergyState(eater.Energy, eater.Species.Traits, eater.Radius);
+        if (eaterState == EnergyState.Full) return;
+
+        var biteSize = GameRules.EatingChunksPerBite(eater.Species.Traits, eater.Radius);
+        var chunks = Math.Min(biteSize, target.FoodChunks);
+        if (chunks <= 0) return;
+
+        target.FoodChunks -= chunks;
+        var maxEnergy = GameRules.MaxEnergy(eater.Species.Traits, eater.Radius);
+        var energyBefore = eater.Energy;
+        eater.Energy = Math.Min(maxEnergy, eater.Energy + chunks * EngineConstants.EnergyPerPlantFoodChunk);
+        var energyGained = eater.Energy - energyBefore;
+
+        _bus.Publish(new OrganismAte(
+            _world.Tick, eater.Id, target.Id, chunks, energyGained, target.FoodChunks));
+    }
+
     private void CollectDeaths(List<OrganismId> order)
     {
         foreach (var id in order)
@@ -198,7 +225,9 @@ public sealed class Simulation
             if (!_world.TryGetOrganism(id, out var state) || !state.IsAlive) continue;
 
             DeathReason? reason = null;
-            if (state.Energy <= 0)
+            if (state.FoodChunks <= 0)
+                reason = DeathReason.Eaten;
+            else if (state.Energy <= 0)
                 reason = DeathReason.Starvation;
             else if (state.TickAge > GameRules.LifeSpan(state.Species))
                 reason = DeathReason.OldAge;
@@ -253,7 +282,8 @@ public sealed class Simulation
         s.Energy,
         s.TickAge,
         s.IsMature,
-        GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius));
+        GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius),
+        s.FoodChunks);
 
     private sealed class WorldViewImpl(
         OrganismSnapshot self,

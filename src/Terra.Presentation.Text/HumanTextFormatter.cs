@@ -36,6 +36,10 @@ public sealed class HumanTextFormatter : IEventFormatter
             OrganismDied d =>
                 $"{t} Died: {d.Id} \"{d.SpeciesName}\" at {d.Position} age={d.TickAge} [{d.Reason}]",
 
+            OrganismAte a =>
+                $"{t} Ate: {a.EaterId} → {a.TargetId} chunks={a.ChunksEaten} " +
+                $"(+{a.EnergyGained:F0} energy, target remaining={a.TargetChunksRemaining})",
+
             _ => $"{t} {evt.GetType().Name}",
         };
     }

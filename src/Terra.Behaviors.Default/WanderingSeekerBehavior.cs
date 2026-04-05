@@ -42,6 +42,13 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
         if (nearest is { } target)
         {
             _wanderTarget = null;
+            // If we're in eating contact, bite; otherwise close the distance.
+            if (Terra.Engine.GameRules.InEatingRange(
+                    sense.Self.Position, sense.Self.Radius,
+                    target.Position, target.Radius))
+            {
+                return new EatAction(target.Id);
+            }
             // int.MaxValue is clamped by the engine to the organism's MaxSpeed.
             return new MoveAction(target.Position, Speed: int.MaxValue);
         }

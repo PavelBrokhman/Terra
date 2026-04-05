@@ -14,4 +14,5 @@ public readonly record struct OrganismSnapshot(
     double Energy,
     int TickAge,
     bool IsMature,
-    EnergyState EnergyState);
+    EnergyState EnergyState,
+    int FoodChunks);
