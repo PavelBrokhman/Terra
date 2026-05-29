@@ -18,12 +18,24 @@
     Optional explicit branch names. If omitted, all remote DEV-* branches are used.
 
 .EXAMPLE
-    pwsh scripts/sync-feature-branches.ps1
-    pwsh scripts/sync-feature-branches.ps1 -Branches DEV-Actions
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-feature-branches.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-feature-branches.ps1 -Branches DEV-Actions
+
+.NOTES
+    Run with -NoProfile so a PowerShell profile can't change the working
+    directory or alias git out from under the script.
 #>
 param(
     [string[]] $Branches
 )
+
+# Never depend on the caller's working directory: operate from the repo root.
+$repoRoot = (git rev-parse --show-toplevel 2>$null)
+if ($LASTEXITCODE -ne 0 -or -not $repoRoot) {
+    Write-Host "Not inside a git repository." -ForegroundColor Red
+    exit 1
+}
+Set-Location $repoRoot.Trim()
 
 $startBranch = (git rev-parse --abbrev-ref HEAD).Trim()
 
