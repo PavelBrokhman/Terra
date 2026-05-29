@@ -21,6 +21,8 @@ dotnet run --project src/Terra.Console -- --help
 ```
 Terra/
 ├── Plans/                      Design docs, game-rules extract, status
+│   ├── 02_GodSim_Design_Review.md  God-sim direction: locked decisions
+│   └── source/                 Original design specs (reference)
 ├── src/
 │   ├── Terra.Engine/           Core simulation (no dependencies)
 │   ├── Terra.Behaviors.Default/  Reference Plant/Herbivore/Carnivore
@@ -35,7 +37,15 @@ Terra/
 
 ## Roadmap
 
-See [Plans/Terrarium2.0_Modernization.md](Plans/Terrarium2.0_Modernization.md) for the full modernization plan.
+See [Plans/Terrarium2.0_Modernization.md](Plans/Terrarium2.0_Modernization.md) for the full modernization plan,
+and [Plans/02_GodSim_Design_Review.md](Plans/02_GodSim_Design_Review.md) for the locked design decisions
+that steer the project toward a multiplayer god-sim.
+
+Design source material (preserved verbatim as reference):
+
+- [Plans/source/01_World_System_Spec.md](Plans/source/01_World_System_Spec.md) — God Simulation World System
+- [Plans/source/02_Engine_Spec.md](Plans/source/02_Engine_Spec.md) — God-Simulation Engine (full system spec)
+- [Plans/source/03_Balance_Variants.md](Plans/source/03_Balance_Variants.md) — Balance / constraint variants
 
 High-level phases:
 
