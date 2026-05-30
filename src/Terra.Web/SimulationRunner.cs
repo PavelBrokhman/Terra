@@ -58,16 +58,29 @@ public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions 
         var bus = new EventBus();
         var sim = new Simulation(world, bus, new SimulationConfig { Seed = opts.Seed });
 
+        // Collect a tick's events, then broadcast them as one JSON-array message
+        // (one onmessage/parse per tick in the browser instead of one per event).
+        // The handler runs synchronously on this thread during TickOnce, so the
+        // list needs no locking.
+        var batch = new List<string>();
         bus.SubscribeAll(evt =>
         {
             if (!opts.StreamMoves && evt is OrganismMoved) return; // moves are the bulk; skip by default
             var line = _formatter.Format(evt);
-            if (line is not null) broadcaster.Publish(line);
+            if (line is not null) batch.Add(line);
         });
+
+        void FlushTick()
+        {
+            if (batch.Count == 0) return;
+            broadcaster.Publish("[" + string.Join(',', batch) + "]");
+            batch.Clear();
+        }
 
         Populate(world, sim);
 
         bus.Publish(new SimulationStarted(world.Width, world.Height, world.OrganismCount, opts.Seed));
+        FlushTick();   // initial batch: the spawn Born events + Started
 
         var reason = SimulationEndReason.TickLimitReached;
         for (var i = 0; i < maxTicks; i++)
@@ -75,11 +88,13 @@ public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions 
             if (ct.IsCancellationRequested) { reason = SimulationEndReason.Stopped; break; }
             if (sim.IsExtinct) { reason = SimulationEndReason.Extinction; break; }
             sim.TickOnce();
+            FlushTick();   // one batch per tick
             try { await Task.Delay(opts.TickDelayMs, ct); }
             catch (OperationCanceledException) { reason = SimulationEndReason.Stopped; break; }
         }
 
         bus.Publish(new SimulationEnded(world.Tick, reason, world.OrganismCount));
+        FlushTick();
     }
 
     private void Populate(World world, Simulation sim)

@@ -91,13 +91,16 @@
     }
 
     es.onmessage = (msg) => {
-      let e; try { e = JSON.parse(msg.data); } catch { return; }
-      if (e.type === 'TickCompleted') {
-        const total = e.plantCount + e.herbivoreCount + e.carnivoreCount;
-        statsEl.innerHTML = `t=<b>${e.tick}</b>  P=${e.plantCount} H=${e.herbivoreCount} C=${e.carnivoreCount}  total=<b>${total}</b>`;
-        return; // keep the per-tick noise out of the log
+      let events; try { events = JSON.parse(msg.data); } catch { return; }
+      if (!Array.isArray(events)) events = [events]; // tolerate a lone object
+      for (const e of events) {
+        if (e.type === 'TickCompleted') {
+          const total = e.plantCount + e.herbivoreCount + e.carnivoreCount;
+          statsEl.innerHTML = `t=<b>${e.tick}</b>  P=${e.plantCount} H=${e.herbivoreCount} C=${e.carnivoreCount}  total=<b>${total}</b>`;
+        } else {
+          buffer.push(e); // keep TickCompleted out of the log
+        }
       }
-      buffer.push(e);
       if (buffer.length > 3000) buffer.splice(0, buffer.length - 3000); // safety cap
       scheduleFlush();
     };
