@@ -163,9 +163,19 @@ dotnet run --project src/Terra.Web -- --Simulation:Creatures=creatures --Simulat
 | `Simulation:Plants` / `:Herbivores` / `:Carnivores` | `30`/`10`/`3` | per-kind counts |
 | `Simulation:Creatures` | _(off)_ | DSL creature file/folder |
 | `Simulation:StreamMoves` | `false` | also stream `OrganismMoved` (off = much lighter feed) |
+| `Simulation:LogDir` | `runs` | folder for the per-run full event log (empty = off) |
 
 > A browser that connects mid-run sees events from connect time onward (no
-> history replay yet).
+> live history replay).
+
+**Reviewing past runs.** The browser only keeps the latest ~200 lines (for
+smooth rendering), but every run writes its **complete** event stream — all
+events, including moves — to `runs/run-<time>-seed<N>.jsonl`. Review it with any
+editor or JSONL tooling:
+
+```bash
+cat runs/run-*.jsonl | jq 'select(.type == "OrganismDied")'   # or Select-String on Windows
+```
 
 ## Project layout
 

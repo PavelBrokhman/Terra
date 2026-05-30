@@ -26,6 +26,12 @@ public sealed class SimulationOptions
     public int Carnivores { get; set; } = 3;
     /// <summary>Optional path to a DSL creature file/folder; null = built-in defaults.</summary>
     public string? Creatures { get; set; }
+
+    /// <summary>
+    /// Folder for the per-run full event log (JSON-Lines, one file per run).
+    /// Empty string disables file logging.
+    /// </summary>
+    public string LogDir { get; set; } = "runs";
 }
 
 /// <summary>
@@ -58,6 +64,18 @@ public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions 
         var bus = new EventBus();
         var sim = new Simulation(world, bus, new SimulationConfig { Seed = opts.Seed });
 
+        // Full event log to disk — one JSON-Lines file per run — so the complete
+        // history can be reviewed/replayed, while the browser only shows a light
+        // live window. Empty LogDir disables it. The file records ALL events
+        // (including Moved); the StreamMoves filter only affects the live feed.
+        StreamWriter? log = null;
+        if (!string.IsNullOrWhiteSpace(opts.LogDir))
+        {
+            Directory.CreateDirectory(opts.LogDir);
+            var path = Path.Combine(opts.LogDir, $"run-{DateTime.Now:yyyyMMdd-HHmmss}-seed{opts.Seed}.jsonl");
+            log = new StreamWriter(path);
+        }
+
         // Collect a tick's events, then broadcast them as one JSON-array message
         // (one onmessage/parse per tick in the browser instead of one per event).
         // The handler runs synchronously on this thread during TickOnce, so the
@@ -65,36 +83,46 @@ public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions 
         var batch = new List<string>();
         bus.SubscribeAll(evt =>
         {
-            if (!opts.StreamMoves && evt is OrganismMoved) return; // moves are the bulk; skip by default
             var line = _formatter.Format(evt);
-            if (line is not null) batch.Add(line);
+            if (line is null) return;
+            log?.WriteLine(line);                                  // full record to disk
+            if (!opts.StreamMoves && evt is OrganismMoved) return; // moves are the bulk; skip the live feed
+            batch.Add(line);
         });
 
         void FlushTick()
         {
+            log?.Flush();
             if (batch.Count == 0) return;
             broadcaster.Publish("[" + string.Join(',', batch) + "]");
             batch.Clear();
         }
 
-        Populate(world, sim);
-
-        bus.Publish(new SimulationStarted(world.Width, world.Height, world.OrganismCount, opts.Seed));
-        FlushTick();   // initial batch: the spawn Born events + Started
-
-        var reason = SimulationEndReason.TickLimitReached;
-        for (var i = 0; i < maxTicks; i++)
+        try
         {
-            if (ct.IsCancellationRequested) { reason = SimulationEndReason.Stopped; break; }
-            if (sim.IsExtinct) { reason = SimulationEndReason.Extinction; break; }
-            sim.TickOnce();
-            FlushTick();   // one batch per tick
-            try { await Task.Delay(opts.TickDelayMs, ct); }
-            catch (OperationCanceledException) { reason = SimulationEndReason.Stopped; break; }
-        }
+            Populate(world, sim);
 
-        bus.Publish(new SimulationEnded(world.Tick, reason, world.OrganismCount));
-        FlushTick();
+            bus.Publish(new SimulationStarted(world.Width, world.Height, world.OrganismCount, opts.Seed));
+            FlushTick();   // initial batch: the spawn Born events + Started
+
+            var reason = SimulationEndReason.TickLimitReached;
+            for (var i = 0; i < maxTicks; i++)
+            {
+                if (ct.IsCancellationRequested) { reason = SimulationEndReason.Stopped; break; }
+                if (sim.IsExtinct) { reason = SimulationEndReason.Extinction; break; }
+                sim.TickOnce();
+                FlushTick();   // one batch per tick
+                try { await Task.Delay(opts.TickDelayMs, ct); }
+                catch (OperationCanceledException) { reason = SimulationEndReason.Stopped; break; }
+            }
+
+            bus.Publish(new SimulationEnded(world.Tick, reason, world.OrganismCount));
+            FlushTick();
+        }
+        finally
+        {
+            log?.Dispose();
+        }
     }
 
     private void Populate(World world, Simulation sim)

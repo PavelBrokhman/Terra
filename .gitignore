@@ -14,6 +14,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+runs/          # per-run simulation event logs (Terra.Web)
 
 # Visual Studio / Rider / VS Code
 .vs/
