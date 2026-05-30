@@ -48,6 +48,7 @@ Design source material (preserved verbatim as reference):
 - [Plans/source/01_World_System_Spec.md](Plans/source/01_World_System_Spec.md) — God Simulation World System
 - [Plans/source/02_Engine_Spec.md](Plans/source/02_Engine_Spec.md) — God-Simulation Engine (full system spec)
 - [Plans/source/03_Balance_Variants.md](Plans/source/03_Balance_Variants.md) — Balance / constraint variants
+- [Plans/source/04_Animal_World_Spec.md](Plans/source/04_Animal_World_Spec.md) — Original "Животный мир" game spec (client-server, microservice behaviour, tick modes)
 
 High-level phases:
 
