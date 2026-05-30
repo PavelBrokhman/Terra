@@ -141,8 +141,10 @@ dotnet run --project src/Terra.Web
 # then open http://localhost:5000
 ```
 
-Shows a live event log (born / moved / ate / attack / died …) plus a P/H/C stats
-line, updating per tick. Run parameters come from the `Simulation` config section:
+The page has a **ticks** box (default 5000) and a **Run** button — set the tick
+count and click **Run** to start (or restart) a run. It shows a live event log
+(born / moved / ate / attack / died …) plus a P/H/C stats line, updating per
+tick. Other run parameters come from the `Simulation` config section:
 
 ```bash
 # DSL creatures + custom params
@@ -153,7 +155,7 @@ dotnet run --project src/Terra.Web -- --Simulation:Creatures=creatures --Simulat
 |---------|---------|---------|
 | `Simulation:Seed` | `42` | PRNG seed |
 | `Simulation:Width` / `:Height` | `400` | world size |
-| `Simulation:MaxTicks` | `5000` | ticks before the run ends |
+| `Simulation:MaxTicks` | `5000` | default tick budget (the Run box overrides it) |
 | `Simulation:TickDelayMs` | `100` | wall-clock pacing between ticks (so it's watchable) |
 | `Simulation:Plants` / `:Herbivores` / `:Carnivores` | `30`/`10`/`3` | per-kind counts |
 | `Simulation:Creatures` | _(off)_ | DSL creature file/folder |

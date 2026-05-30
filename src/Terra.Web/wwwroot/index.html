@@ -19,8 +19,10 @@
 </head>
 <body>
   <div id="bar">
-    <span>🌱 <b>Terra</b> live</span>
-    <span id="stats">waiting for first tick…</span>
+    <span>🌱 <b>Terra</b></span>
+    <label>ticks <input id="ticks" type="number" value="5000" min="1" step="100" style="width:80px"></label>
+    <button id="run">Run</button>
+    <span id="stats">press Run to start…</span>
     <span id="status">connecting…</span>
   </div>
   <div id="log"></div>
@@ -70,6 +72,14 @@
       while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
       const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 60;
       if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+    };
+
+    document.getElementById('run').onclick = async () => {
+      const ticks = parseInt(document.getElementById('ticks').value, 10) || 5000;
+      logEl.innerHTML = '';
+      statsEl.textContent = `starting ${ticks} ticks…`;
+      try { await fetch('/run?ticks=' + ticks, { method: 'POST' }); }
+      catch { statsEl.textContent = 'run request failed'; }
     };
   </script>
 </body>

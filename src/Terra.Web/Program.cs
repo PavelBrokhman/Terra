@@ -10,7 +10,7 @@ builder.Configuration.GetSection("Simulation").Bind(simOptions);
 
 builder.Services.AddSingleton(simOptions);
 builder.Services.AddSingleton<Broadcaster>();
-builder.Services.AddHostedService<SimulationHost>();
+builder.Services.AddSingleton<SimulationRunner>();
 
 var app = builder.Build();
 
@@ -35,6 +35,14 @@ app.MapGet("/events", async (HttpContext ctx, Broadcaster bc) =>
     }
     catch (OperationCanceledException) { /* client disconnected — fine */ }
     finally { bc.Unsubscribe(id); }
+});
+
+// Start (or restart) a run from the UI with a chosen tick budget.
+app.MapPost("/run", (SimulationRunner runner, int? ticks) =>
+{
+    var maxTicks = ticks is > 0 ? ticks.Value : simOptions.MaxTicks;
+    runner.Start(maxTicks);
+    return Results.Ok(new { started = true, ticks = maxTicks });
 });
 
 app.Run();

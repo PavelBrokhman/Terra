@@ -6,7 +6,7 @@ using Terra.Presentation.Text;
 
 namespace Terra.Web;
 
-/// <summary>Configurable run parameters for the hosted simulation.</summary>
+/// <summary>Configurable run parameters for a simulation run.</summary>
 public sealed class SimulationOptions
 {
     public int Seed { get; set; } = 42;
@@ -23,16 +23,30 @@ public sealed class SimulationOptions
 }
 
 /// <summary>
-/// Runs the simulation on a background task, pacing ticks by wall-clock so the
-/// SSE viewer sees progress live, and pushes every event (as JSON-Lines) to the
-/// <see cref="Broadcaster"/>. The engine stays pure/deterministic — pacing lives
-/// here, outside it.
+/// Starts/restarts a simulation run on demand (from the UI "Run" button). Each
+/// run builds a fresh world and streams its events to the <see cref="Broadcaster"/>;
+/// starting a new run cancels the previous one. Pacing is wall-clock here; the
+/// engine itself stays pure/deterministic.
 /// </summary>
-public sealed class SimulationHost(Broadcaster broadcaster, SimulationOptions opts) : BackgroundService
+public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions opts)
 {
     private readonly JsonLinesFormatter _formatter = new();
+    private readonly object _gate = new();
+    private CancellationTokenSource? _cts;
 
-    protected override async Task ExecuteAsync(CancellationToken ct)
+    /// <summary>Cancel any in-flight run and start a new one for <paramref name="maxTicks"/> ticks.</summary>
+    public void Start(int maxTicks)
+    {
+        CancellationTokenSource cts;
+        lock (_gate)
+        {
+            _cts?.Cancel();
+            _cts = cts = new CancellationTokenSource();
+        }
+        _ = Task.Run(() => RunAsync(maxTicks, cts.Token));
+    }
+
+    private async Task RunAsync(int maxTicks, CancellationToken ct)
     {
         var world = new World(new WorldConfig(opts.Width, opts.Height));
         var bus = new EventBus();
@@ -49,7 +63,7 @@ public sealed class SimulationHost(Broadcaster broadcaster, SimulationOptions op
         bus.Publish(new SimulationStarted(world.Width, world.Height, world.OrganismCount, opts.Seed));
 
         var reason = SimulationEndReason.TickLimitReached;
-        for (var i = 0; i < opts.MaxTicks; i++)
+        for (var i = 0; i < maxTicks; i++)
         {
             if (ct.IsCancellationRequested) { reason = SimulationEndReason.Stopped; break; }
             if (sim.IsExtinct) { reason = SimulationEndReason.Extinction; break; }
