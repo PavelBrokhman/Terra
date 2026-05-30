@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terra — live</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: ui-monospace, Consolas, monospace; background: #0e0f12; color: #d6d8dc; margin: 0; }
+    #bar { position: sticky; top: 0; background: #1b1d22; border-bottom: 1px solid #2c2f36;
+           padding: 8px 12px; font-size: 13px; display: flex; gap: 16px; align-items: center; }
+    #bar b { color: #fff; } #status { margin-left: auto; color: #8a8f98; }
+    #log { padding: 8px 12px; font-size: 12px; line-height: 1.45; }
+    .row { white-space: pre-wrap; }
+    .t { color: #6b7280; }
+    .born { color: #6ee787; } .died { color: #ff7b72; } .ate { color: #79c0ff; }
+    .atk { color: #ffa657; } .repro { color: #d2a8ff; } .sim { color: #e3b341; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <span>🌱 <b>Terra</b> live</span>
+    <span id="stats">waiting for first tick…</span>
+    <span id="status">connecting…</span>
+  </div>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const statsEl = document.getElementById('stats');
+    const statusEl = document.getElementById('status');
+    const MAX_ROWS = 600;
+
+    const idOf = (x) => x == null ? '?' : ('#' + (x.value ?? x));
+    const pos = (p) => p == null ? '' : `(${p.x},${p.y})`;
+    const pad = (n) => String(n).padStart(4, '0');
+
+    function describe(e) {
+      switch (e.type) {
+        case 'SimulationStarted':  return [`=== started ${e.worldWidth}x${e.worldHeight}, ${e.initialOrganismCount} organisms, seed=${e.seed}`, 'sim'];
+        case 'SimulationEnded':    return [`=== ended: ${e.reason}, ${e.finalOrganismCount} remain`, 'sim'];
+        case 'OrganismBorn':       return [`Born  ${e.kind} ${idOf(e.id)} "${e.speciesName}" ${pos(e.position)} gen=${e.generation}`, 'born'];
+        case 'OrganismMoved':      return [`Moved ${idOf(e.id)} ${pos(e.from)} → ${pos(e.to)}`, ''];
+        case 'OrganismDied':       return [`Died  ${idOf(e.id)} "${e.speciesName}" ${pos(e.position)} age=${e.tickAge} [${e.reason}]`, 'died'];
+        case 'OrganismAte':        return [`Ate   ${idOf(e.eaterId)} → ${idOf(e.targetId)} chunks=${e.chunksEaten} (+${Math.round(e.energyGained)} e)`, 'ate'];
+        case 'OrganismGrown':      return [`Grew  ${idOf(e.id)} r=${e.newRadius}`, ''];
+        case 'OrganismAttacked':   return [`Atk   ${idOf(e.attackerId)} → ${idOf(e.targetId)} dmg=${e.damageDealt}${e.targetWasDefending ? '*' : ''}`, 'atk'];
+        case 'OrganismDefended':   return [`Def   ${idOf(e.defenderId)} vs ${idOf(e.againstId)}`, 'atk'];
+        case 'ReproductionStarted':   return [`Repro ${idOf(e.parentId)} incubating`, 'repro'];
+        case 'ReproductionCompleted': return [`Repro ${idOf(e.parentId)} → ${idOf(e.offspringId)}`, 'repro'];
+        default: return [e.type + ' ' + JSON.stringify(e), ''];
+      }
+    }
+
+    const es = new EventSource('/events');
+    es.onopen = () => { statusEl.textContent = 'connected'; };
+    es.onerror = () => { statusEl.textContent = 'disconnected'; };
+    es.onmessage = (msg) => {
+      let e; try { e = JSON.parse(msg.data); } catch { return; }
+      if (e.type === 'TickCompleted') {
+        const total = e.plantCount + e.herbivoreCount + e.carnivoreCount;
+        statsEl.innerHTML = `t=<b>${e.tick}</b>  P=${e.plantCount} H=${e.herbivoreCount} C=${e.carnivoreCount}  total=<b>${total}</b>`;
+        return; // keep the per-tick noise out of the log
+      }
+      const [text, cls] = describe(e);
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span class="t">[t=${pad(e.tick)}]</span> <span class="${cls}">${text}</span>`;
+      logEl.appendChild(row);
+      while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 60;
+      if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+    };
+  </script>
+</body>
+</html>
