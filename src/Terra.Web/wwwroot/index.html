@@ -6,11 +6,14 @@
   <title>Terra — live</title>
   <style>
     :root { color-scheme: dark; }
-    body { font-family: ui-monospace, Consolas, monospace; background: #0e0f12; color: #d6d8dc; margin: 0; }
-    #bar { position: sticky; top: 0; background: #1b1d22; border-bottom: 1px solid #2c2f36;
+    html, body { height: 100%; }
+    body { font-family: ui-monospace, Consolas, monospace; background: #0e0f12; color: #d6d8dc;
+           margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+    #bar { flex: 0 0 auto; background: #1b1d22; border-bottom: 1px solid #2c2f36;
            padding: 8px 12px; font-size: 13px; display: flex; gap: 16px; align-items: center; }
     #bar b { color: #fff; } #status { margin-left: auto; color: #8a8f98; }
-    #log { padding: 8px 12px; font-size: 12px; line-height: 1.45; }
+    #log { flex: 1 1 auto; overflow-y: auto; padding: 8px 12px; font-size: 12px; line-height: 1.45;
+           contain: content; }
     .row { white-space: pre-wrap; }
     .t { color: #6b7280; }
     .born { color: #6ee787; } .died { color: #ff7b72; } .ate { color: #79c0ff; }
@@ -73,7 +76,7 @@
       // Never render more than the visible cap in one frame — if we fell behind,
       // older buffered rows would be trimmed away anyway. Bounds per-frame work.
       if (events.length > MAX_ROWS) events = events.slice(-MAX_ROWS);
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
+      const nearBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 80;
       const frag = document.createDocumentFragment();
       for (const e of events) {
         const [text, cls] = describe(e);
@@ -84,7 +87,7 @@
       }
       logEl.appendChild(frag);
       while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
-      if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+      if (nearBottom) logEl.scrollTop = logEl.scrollHeight;
     }
 
     es.onmessage = (msg) => {
