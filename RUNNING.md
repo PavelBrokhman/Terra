@@ -1,7 +1,7 @@
 # Running Terra
 
-How to build and run the project. Current runnable target is the **Phase 1**
-console simulation (`Terra.Console`).
+How to build and run the project. Two runnable targets: the **console**
+(`Terra.Console`, text feed) and the **browser viewer** (`Terra.Web`, live SSE feed).
 
 ## Prerequisites
 
@@ -130,14 +130,47 @@ Simulation time is tick-based, never wall-clock. When filing a bug, include the
 exact command line (especially `--seed`, `--ticks`, and the counts) so the run
 can be reproduced bit-for-bit.
 
+## Web viewer (browser UI)
+
+A browser-based live view of the same simulation — the engine streams its event
+feed to the page over **Server-Sent Events** (logic is decoupled from rendering;
+the web client is just another subscriber).
+
+```bash
+dotnet run --project src/Terra.Web
+# then open http://localhost:5000
+```
+
+Shows a live event log (born / moved / ate / attack / died …) plus a P/H/C stats
+line, updating per tick. Run parameters come from the `Simulation` config section:
+
+```bash
+# DSL creatures + custom params
+dotnet run --project src/Terra.Web -- --Simulation:Creatures=creatures --Simulation:Seed=7 --Simulation:TickDelayMs=100
+```
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `Simulation:Seed` | `42` | PRNG seed |
+| `Simulation:Width` / `:Height` | `400` | world size |
+| `Simulation:MaxTicks` | `5000` | ticks before the run ends |
+| `Simulation:TickDelayMs` | `100` | wall-clock pacing between ticks (so it's watchable) |
+| `Simulation:Plants` / `:Herbivores` / `:Carnivores` | `30`/`10`/`3` | per-kind counts |
+| `Simulation:Creatures` | _(off)_ | DSL creature file/folder |
+
+> A browser that connects mid-run sees events from connect time onward (no
+> history replay yet).
+
 ## Project layout
 
 ```
 src/
   Terra.Engine/              core simulation — no dependencies beyond BCL
   Terra.Behaviors.Default/   reference Plant / Herbivore / Carnivore behaviors
+  Terra.Behaviors.Dsl/       text-file (JSON) creature behaviour interpreter
   Terra.Presentation.Text/   human + JSON-Lines event formatters
-  Terra.Console/             CLI entry point (thin wiring layer)
+  Terra.Console/             CLI entry point (text/console)
+  Terra.Web/                 ASP.NET Core browser viewer (SSE live feed)
 tests/
   Terra.Engine.Tests/        xUnit tests (see TESTING.md)
 ```
