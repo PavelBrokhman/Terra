@@ -208,4 +208,28 @@ public class ReproductionTests
         // cooldown set = 8 × 15 = 120
         Assert.True(state.ReproductionWait > 0);
     }
+
+    // ── Events ───────────────────────────────────────────────────────────
+    [Fact]
+    public void Reproduce_PublishesStartedAndCompletedEvents()
+    {
+        var (world, bus, sim) = Make();
+        var started = new List<ReproductionStarted>();
+        var completed = new List<ReproductionCompleted>();
+        bus.Subscribe<ReproductionStarted>(started.Add);
+        bus.Subscribe<ReproductionCompleted>(completed.Add);
+
+        var sp = Plant();
+        var id = sim.Spawn(sp, new ScriptedBehavior(ReproduceAction.Instance),
+            new Position(100, 100), radius: sp.MatureRadius, energy: 100_000_000);
+        world.TryGetOrganism(id, out var parent);
+        parent.ReproductionWait = 0;
+
+        for (var i = 0; i < 11; i++) sim.TickOnce();
+
+        Assert.Single(started);
+        Assert.Equal(id, started[0].ParentId);
+        Assert.Single(completed);
+        Assert.Equal(id, completed[0].ParentId);
+    }
 }

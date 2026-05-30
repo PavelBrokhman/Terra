@@ -198,8 +198,9 @@ public sealed class Simulation
                 ApplyAttack(state, attack);
                 break;
 
-            case DefendAction:
+            case DefendAction defend:
                 state.IsDefending = true;
+                _bus.Publish(new OrganismDefended(_world.Tick, state.Id, defend.Against));
                 break;
 
             case ReproduceAction:
@@ -346,6 +347,8 @@ public sealed class Simulation
         if (energyState < EnergyState.Normal) return;
 
         state.IncubationTicksRemaining = EngineConstants.TicksToIncubate;
+        _bus.Publish(new ReproductionStarted(
+            _world.Tick, state.Id, EngineConstants.TicksToIncubate));
     }
 
     private void SpawnOffspring(OrganismState parent)
@@ -375,6 +378,7 @@ public sealed class Simulation
         _bus.Publish(new OrganismBorn(
             _world.Tick, baby.Id, parent.Species.Name, parent.Species.Kind,
             baby.Position, baby.Radius, baby.Generation));
+        _bus.Publish(new ReproductionCompleted(_world.Tick, parent.Id, baby.Id));
     }
 
     private void ApplyAttack(OrganismState attacker, AttackAction attack)

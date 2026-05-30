@@ -48,6 +48,15 @@ public sealed class HumanTextFormatter : IEventFormatter
                 $"atk={at.AttackRoll} def={at.DefenseRoll}{(at.TargetWasDefending ? "*" : "")} " +
                 $"damage={at.DamageDealt} (total={at.TargetDamageTotal})",
 
+            OrganismDefended d =>
+                $"{t} Defend: {d.DefenderId} vs {d.AgainstId}",
+
+            ReproductionStarted r =>
+                $"{t} Reproduce: {r.ParentId} incubating ({r.IncubationTicks} ticks)",
+
+            ReproductionCompleted r =>
+                $"{t} Reproduce: {r.ParentId} → offspring {r.OffspringId}",
+
             _ => $"{t} {evt.GetType().Name}",
         };
     }

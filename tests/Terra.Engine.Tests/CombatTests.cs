@@ -215,4 +215,19 @@ public class CombatTests
         world.TryGetOrganism(id2, out var state2);
         Assert.False(state2.IsDefending);
     }
+
+    [Fact]
+    public void DefendAction_PublishesDefendedEvent()
+    {
+        var (_, bus, sim) = Make();
+        var defended = new List<OrganismDefended>();
+        bus.Subscribe<OrganismDefended>(defended.Add);
+        sim.Spawn(Herbivore(), new ScriptedBehavior(new DefendAction(new OrganismId(99))),
+            new Position(50, 50), radius: 10, energy: 100_000);
+
+        sim.TickOnce();
+
+        Assert.Single(defended);
+        Assert.Equal(new OrganismId(99), defended[0].AgainstId);
+    }
 }

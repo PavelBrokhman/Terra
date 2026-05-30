@@ -25,4 +25,7 @@ namespace Terra.Engine.Events;
 [JsonDerivedType(typeof(OrganismAte), nameof(OrganismAte))]
 [JsonDerivedType(typeof(OrganismGrown), nameof(OrganismGrown))]
 [JsonDerivedType(typeof(OrganismAttacked), nameof(OrganismAttacked))]
+[JsonDerivedType(typeof(OrganismDefended), nameof(OrganismDefended))]
+[JsonDerivedType(typeof(ReproductionStarted), nameof(ReproductionStarted))]
+[JsonDerivedType(typeof(ReproductionCompleted), nameof(ReproductionCompleted))]
 public abstract record SimulationEvent(int Tick);
