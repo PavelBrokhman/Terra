@@ -147,6 +147,10 @@ public class EatActionTests
         Assert.True(GameRules.CanEat(SpeciesKind.Herbivore, SpeciesKind.Plant));
         Assert.False(GameRules.CanEat(SpeciesKind.Plant, SpeciesKind.Herbivore));
         Assert.False(GameRules.CanEat(SpeciesKind.Herbivore, SpeciesKind.Herbivore));
-        Assert.False(GameRules.CanEat(SpeciesKind.Carnivore, SpeciesKind.Herbivore)); // needs attack first
+        // Carnivores eat animal meat; the engine still requires the target to be
+        // a carcass (dead) at eat time, but the diet rule itself allows it.
+        Assert.True(GameRules.CanEat(SpeciesKind.Carnivore, SpeciesKind.Herbivore));
+        Assert.True(GameRules.CanEat(SpeciesKind.Carnivore, SpeciesKind.Carnivore));
+        Assert.False(GameRules.CanEat(SpeciesKind.Carnivore, SpeciesKind.Plant));
     }
 }

@@ -14,6 +14,11 @@ public class SimulationTests
         public OrganismAction OnTick(IWorldView sense) => new MoveAction(target, speed);
     }
 
+    private sealed class FixedEatBehavior(OrganismId target) : IOrganismBehavior
+    {
+        public OrganismAction OnTick(IWorldView sense) => new EatAction(target);
+    }
+
     private static Species Plant(int matureSize = 30) => new(
         "P", SpeciesKind.Plant,
         new SpeciesTraits
@@ -38,6 +43,20 @@ public class SimulationTests
             AttackDamagePoints = 0,
             DefendDamagePoints = 0,
             EyesightPoints = 20,
+            CamouflagePoints = 0,
+            MatureSize = matureSize,
+        });
+
+    private static Species Carnivore(int matureSize = 30) => new(
+        "C", SpeciesKind.Carnivore,
+        new SpeciesTraits
+        {
+            MaximumEnergyPoints = 20,
+            MaximumSpeedPoints = 50,
+            EatingSpeedPoints = 50,
+            AttackDamagePoints = 50,
+            DefendDamagePoints = 0,
+            EyesightPoints = 50,
             CamouflagePoints = 0,
             MatureSize = matureSize,
         });
@@ -119,13 +138,16 @@ public class SimulationTests
         var deaths = new List<OrganismDied>();
         bus.Subscribe<OrganismDied>(deaths.Add);
         // Animal radius=10, energy=0.001 — one tick drains to 0 exactly.
-        sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 10, 0.001);
+        var id = sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 10, 0.001);
 
         sim.TickOnce();
 
         Assert.Single(deaths);
         Assert.Equal(DeathReason.Starvation, deaths[0].Reason);
-        Assert.Equal(0, world.OrganismCount);
+        // A starved animal becomes a carcass (food for scavengers), not removed.
+        Assert.Equal(0, world.LivingCount);
+        Assert.True(world.TryGetOrganism(id, out var carcass));
+        Assert.False(carcass.IsAlive);
     }
 
     [Fact]
@@ -233,6 +255,50 @@ public class SimulationTests
         Assert.Equal(1, ticks[0].Tick);
         Assert.Equal(5, ticks[^1].Tick);
         Assert.True(ticks.All(t => t.PlantCount == 1));
+    }
+
+    [Fact]
+    public void DeadAnimal_BecomesCarcass_ThatDecomposesAfterTimeToRot()
+    {
+        var (world, _, sim) = Make();
+        var id = sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 10, 0.001);
+
+        sim.TickOnce(); // starves → carcass, RotTicks = 1
+        Assert.True(world.TryGetOrganism(id, out var carcass) && !carcass.IsAlive);
+
+        // Tick up to the rot threshold: the carcass is still around (food source).
+        for (var i = 0; i < EngineConstants.TimeToRot - 1; i++) sim.TickOnce();
+        Assert.True(world.TryGetOrganism(id, out _));
+
+        sim.TickOnce(); // RotTicks now exceeds TimeToRot → decomposed
+        Assert.False(world.TryGetOrganism(id, out _));
+        Assert.Equal(0, world.OrganismCount);
+    }
+
+    [Fact]
+    public void Carnivore_ScavengesCarcass_GainsEnergy()
+    {
+        var (world, bus, sim) = Make();
+        var ate = new List<OrganismAte>();
+        bus.Subscribe<OrganismAte>(ate.Add);
+
+        // Herbivore starves on tick 1, leaving a carcass with food chunks.
+        var preyId = sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 15, 0.001);
+        // Hungry carnivore in eating range that always tries to eat the prey.
+        var carn = Carnivore();
+        var maxEnergy = GameRules.MaxEnergy(carn.Traits, 15);
+        var hunterId = sim.Spawn(carn, new FixedEatBehavior(preyId), new Position(70, 50), 15, maxEnergy * 0.3);
+
+        sim.TickOnce(); // prey still alive during behavior → eat is a no-op; prey then dies
+        Assert.Empty(ate);
+        world.TryGetOrganism(hunterId, out var afterTick1);
+        var energyAfterTick1 = afterTick1.Energy;
+
+        sim.TickOnce(); // carcass exists now → carnivore feeds on it
+        Assert.NotEmpty(ate);
+        Assert.All(ate, e => Assert.Equal(hunterId, e.EaterId));
+        world.TryGetOrganism(hunterId, out var afterTick2);
+        Assert.True(afterTick2.Energy > energyAfterTick1);
     }
 
     [Fact]

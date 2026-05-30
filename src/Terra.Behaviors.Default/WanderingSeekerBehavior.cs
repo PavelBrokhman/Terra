@@ -30,6 +30,13 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
     /// <summary>Action to emit when prey is in range.</summary>
     protected abstract OrganismAction OnInRange(OrganismSnapshot target);
 
+    /// <summary>
+    /// Optional species-specific feeding step, evaluated before the default
+    /// prey hunt. Returns an action to take (e.g. a carnivore scavenging a
+    /// nearby carcass) or null to fall through to normal hunting.
+    /// </summary>
+    protected virtual OrganismAction? TryFeedSpecial(OrganismSnapshot self, IWorldView sense) => null;
+
     public OrganismAction OnTick(IWorldView sense)
     {
         var self = sense.Self;
@@ -39,7 +46,7 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
         {
             foreach (var other in sense.Visible)
             {
-                if (other.Kind != threatKind) continue;
+                if (other.Kind != threatKind || !other.IsAlive) continue;
                 if (GameRules.InAttackRange(
                         self.Position, self.Radius, other.Position, other.Radius))
                 {
@@ -53,12 +60,16 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
         if (self.IsMature && self.EnergyState >= EnergyState.Normal && !self.IsIncubating)
             return ReproduceAction.Instance;
 
-        // 3. Seek nearest visible prey.
+        // 3. Species-specific feeding (e.g. carnivores scavenging carcasses).
+        if (TryFeedSpecial(self, sense) is { } special)
+            return special;
+
+        // 4. Seek nearest visible living prey.
         OrganismSnapshot? nearest = null;
         var nearestDist = double.MaxValue;
         foreach (var other in sense.Visible)
         {
-            if (other.Kind != _prey) continue;
+            if (other.Kind != _prey || !other.IsAlive) continue;
             var d = other.Position.DistanceTo(self.Position);
             if (d < nearestDist)
             {
@@ -75,7 +86,7 @@ public abstract class WanderingSeekerBehavior : IOrganismBehavior
             return new MoveAction(target.Position, Speed: int.MaxValue);
         }
 
-        // 4. No prey visible — wander.
+        // 5. No prey visible — wander.
         if (_wanderTarget is null || HasArrived(self.Position, _wanderTarget.Value))
         {
             _wanderTarget = new Position(

@@ -114,14 +114,17 @@ public static class GameRules
     }
 
     /// <summary>
-    /// Can <paramref name="eater"/> eat <paramref name="target"/>?
-    /// Phase 2 Step 1: herbivores eat plants. Other combinations will be added
-    /// as Attack + carcass mechanics arrive.
+    /// Is <paramref name="target"/> a valid food kind for <paramref name="eater"/>?
+    /// Herbivores eat living plants; carnivores eat animal carcasses (meat).
+    /// The alive/dead requirement is enforced by the engine at eat time:
+    /// plants are eaten alive, animals only as carcasses.
     /// </summary>
     public static bool CanEat(SpeciesKind eater, SpeciesKind target) =>
         (eater, target) switch
         {
             (SpeciesKind.Herbivore, SpeciesKind.Plant) => true,
+            (SpeciesKind.Carnivore, SpeciesKind.Herbivore) => true,
+            (SpeciesKind.Carnivore, SpeciesKind.Carnivore) => true,
             _ => false,
         };
 

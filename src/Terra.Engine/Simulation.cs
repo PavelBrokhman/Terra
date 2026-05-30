@@ -7,9 +7,10 @@ namespace Terra.Engine;
 /// order of operations each tick. Publishes domain events to an
 /// <see cref="IEventBus"/>; knows nothing about presentation.
 ///
-/// Step 5 scope: tick loop, metabolism, movement, death (starvation/old-age).
-/// Eat/Attack/Defend/Reproduce will be added in later steps — they are
-/// currently silently treated as Idle.
+/// Death does not delete an animal: like the original Terrarium, a dead animal
+/// becomes a carcass that keeps its food chunks. Carnivores feed on carcasses,
+/// and an uneaten carcass decomposes after EngineConstants.TimeToRot ticks.
+/// Plants are removed on death.
 /// </summary>
 public sealed class Simulation
 {
@@ -29,7 +30,7 @@ public sealed class Simulation
 
     public World World => _world;
     public int Seed => _config.Seed;
-    public bool IsExtinct => _world.OrganismCount == 0;
+    public bool IsExtinct => _world.LivingCount == 0;
 
     /// <summary>
     /// Add a new organism and register its behavior. Publishes
@@ -67,6 +68,7 @@ public sealed class Simulation
         ApplyReproduction(order);
         ApplyBehaviorActions(order);
         CollectDeaths(order);
+        ApplyRot(order);
 
         _world.AdvanceTick();
         PublishTickSummary();
@@ -237,8 +239,13 @@ public sealed class Simulation
 
     private void ApplyEat(OrganismState eater, EatAction eat)
     {
-        if (!_world.TryGetOrganism(eat.Target, out var target) || !target.IsAlive) return;
+        if (!_world.TryGetOrganism(eat.Target, out var target)) return;
         if (!GameRules.CanEat(eater.Species.Kind, target.Species.Kind)) return;
+
+        // Plants are eaten alive; animals only as carcasses (legacy DoBites:2302).
+        var targetIsPlant = target.Species.Kind == SpeciesKind.Plant;
+        if (targetIsPlant ? !target.IsAlive : target.IsAlive) return;
+
         if (!GameRules.InEatingRange(eater.Position, eater.Radius, target.Position, target.Radius)) return;
 
         // Full eaters refuse to eat (matches original Terrarium's eating rule).
@@ -250,13 +257,20 @@ public sealed class Simulation
         if (chunks <= 0) return;
 
         target.FoodChunks -= chunks;
+        var energyPerChunk = targetIsPlant
+            ? EngineConstants.EnergyPerPlantFoodChunk
+            : EngineConstants.EnergyPerAnimalFoodChunk;
         var maxEnergy = GameRules.MaxEnergy(eater.Species.Traits, eater.Radius);
         var energyBefore = eater.Energy;
-        eater.Energy = Math.Min(maxEnergy, eater.Energy + chunks * EngineConstants.EnergyPerPlantFoodChunk);
+        eater.Energy = Math.Min(maxEnergy, eater.Energy + chunks * energyPerChunk);
         var energyGained = eater.Energy - energyBefore;
 
         _bus.Publish(new OrganismAte(
             _world.Tick, eater.Id, target.Id, chunks, energyGained, target.FoodChunks));
+
+        // A carcass eaten down to nothing is removed (the death was already emitted).
+        if (!targetIsPlant && target.FoodChunks <= 0)
+            _world.RemoveOrganism(target.Id);
     }
 
     private void ApplyReproduction(List<OrganismId> order)
@@ -363,10 +377,27 @@ public sealed class Simulation
             if (reason is null) continue;
 
             state.IsAlive = false;
+            _behaviors.Remove(id);          // dead things take no actions
             _bus.Publish(new OrganismDied(
                 _world.Tick, id, state.Species.Name, state.Position, state.TickAge, reason.Value));
-            _world.RemoveOrganism(id);
-            _behaviors.Remove(id);
+
+            // Plants vanish on death; animals leave a carcass that carnivores can
+            // scavenge and that decomposes over TimeToRot ticks (see ApplyRot).
+            if (state.Species.Kind == SpeciesKind.Plant)
+                _world.RemoveOrganism(id);
+            else
+                state.RotTicks = 0;
+        }
+    }
+
+    private void ApplyRot(List<OrganismId> order)
+    {
+        foreach (var id in order)
+        {
+            if (!_world.TryGetOrganism(id, out var state) || state.IsAlive) continue;
+            state.RotTicks++;
+            if (state.RotTicks > EngineConstants.TimeToRot)
+                _world.RemoveOrganism(id);  // decomposed; death was already emitted
         }
     }
 
@@ -375,6 +406,7 @@ public sealed class Simulation
         var p = 0; var h = 0; var c = 0;
         foreach (var o in _world.Organisms)
         {
+            if (!o.IsAlive) continue;   // carcasses are not part of the population
             switch (o.Species.Kind)
             {
                 case SpeciesKind.Plant: p++; break;
@@ -394,7 +426,7 @@ public sealed class Simulation
         var visible = new List<OrganismSnapshot>();
         foreach (var other in _world.OrganismsNear(self.Position, range, exclude: self.Id))
         {
-            if (!other.IsAlive) continue;
+            // Carcasses stay visible so carnivores can find food to scavenge.
             visible.Add(Snapshot(other));
         }
         return new WorldViewImpl(
@@ -412,7 +444,8 @@ public sealed class Simulation
         s.IsMature,
         GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius),
         s.FoodChunks,
-        s.IsIncubating);
+        s.IsIncubating,
+        s.IsAlive);
 
     private sealed class WorldViewImpl(
         OrganismSnapshot self,

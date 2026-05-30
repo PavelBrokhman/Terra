@@ -53,6 +53,14 @@ public sealed class OrganismState
     /// <summary>True while an incubation cycle is in progress.</summary>
     public bool IsIncubating => IncubationTicksRemaining > 0;
 
+    /// <summary>
+    /// Ticks this organism has spent as a carcass (only meaningful once
+    /// <see cref="IsAlive"/> is false). When a dead animal's carcass exceeds
+    /// <see cref="EngineConstants.TimeToRot"/> ticks it decomposes and is
+    /// removed. Plants do not leave carcasses.
+    /// </summary>
+    public int RotTicks { get; internal set; }
+
     internal OrganismState(
         OrganismId id,
         Species species,

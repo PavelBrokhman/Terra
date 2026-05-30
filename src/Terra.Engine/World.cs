@@ -24,7 +24,20 @@ public sealed class World
         Height = config.Height;
     }
 
+    /// <summary>Total organisms stored, including dead carcasses awaiting decay.</summary>
     public int OrganismCount => _organisms.Count;
+
+    /// <summary>Count of living organisms only (excludes carcasses).</summary>
+    public int LivingCount
+    {
+        get
+        {
+            var n = 0;
+            foreach (var o in _organisms.Values) if (o.IsAlive) n++;
+            return n;
+        }
+    }
+
     public IReadOnlyCollection<OrganismState> Organisms => _organisms.Values;
 
     /// <summary>
