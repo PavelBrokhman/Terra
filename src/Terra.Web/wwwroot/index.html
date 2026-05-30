@@ -69,7 +69,10 @@
     function flushBuffer() {
       flushScheduled = false;
       if (buffer.length === 0) return;
-      const events = buffer; buffer = [];
+      let events = buffer; buffer = [];
+      // Never render more than the visible cap in one frame — if we fell behind,
+      // older buffered rows would be trimmed away anyway. Bounds per-frame work.
+      if (events.length > MAX_ROWS) events = events.slice(-MAX_ROWS);
       const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
       const frag = document.createDocumentFragment();
       for (const e of events) {
