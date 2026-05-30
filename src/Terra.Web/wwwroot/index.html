@@ -34,7 +34,7 @@
     const logEl = document.getElementById('log');
     const statsEl = document.getElementById('stats');
     const statusEl = document.getElementById('status');
-    const MAX_ROWS = 600;
+    const MAX_ROWS = 200;
 
     const idOf = (x) => x == null ? '?' : ('#' + (x.value ?? x));
     const pos = (p) => p == null ? '' : `(${p.x},${p.y})`;
@@ -67,7 +67,7 @@
     function scheduleFlush() {
       if (flushScheduled) return;
       flushScheduled = true;
-      requestAnimationFrame(flushBuffer);
+      setTimeout(flushBuffer, 120);   // coalesce a burst into ~one DOM update per tick
     }
     function flushBuffer() {
       flushScheduled = false;
