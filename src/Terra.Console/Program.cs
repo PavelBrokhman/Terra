@@ -1,4 +1,5 @@
 using Terra.Behaviors.Default;
+using Terra.Behaviors.Dsl;
 using Terra.Console;
 using Terra.Engine;
 using Terra.Engine.Events;
@@ -50,14 +51,51 @@ void SpawnOne(Species species, IOrganismBehavior behavior)
     sim.Spawn(species, behavior, new Position(x, y), radius, energy);
 }
 
-for (var i = 0; i < opts.PlantCount; i++)
-    SpawnOne(DefaultSpecies.Plant, DefaultPlant.Instance);
+int CountFor(SpeciesKind kind) => kind switch
+{
+    SpeciesKind.Plant => opts.PlantCount,
+    SpeciesKind.Herbivore => opts.HerbivoreCount,
+    SpeciesKind.Carnivore => opts.CarnivoreCount,
+    _ => 0,
+};
 
-for (var i = 0; i < opts.HerbivoreCount; i++)
-    SpawnOne(DefaultSpecies.Herbivore, new DefaultHerbivore(new Random(opts.Seed * 1000 + i)));
+SpeciesTraits TraitsFor(SpeciesKind kind) => kind switch
+{
+    SpeciesKind.Plant => DefaultSpecies.Plant.Traits,
+    SpeciesKind.Herbivore => DefaultSpecies.Herbivore.Traits,
+    SpeciesKind.Carnivore => DefaultSpecies.Carnivore.Traits,
+    _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+};
 
-for (var i = 0; i < opts.CarnivoreCount; i++)
-    SpawnOne(DefaultSpecies.Carnivore, new DefaultCarnivore(new Random(opts.Seed * 1000 + 500 + i)));
+if (opts.Creatures is null)
+{
+    // Built-in reference population.
+    for (var i = 0; i < opts.PlantCount; i++)
+        SpawnOne(DefaultSpecies.Plant, DefaultPlant.Instance);
+    for (var i = 0; i < opts.HerbivoreCount; i++)
+        SpawnOne(DefaultSpecies.Herbivore, new DefaultHerbivore(new Random(opts.Seed * 1000 + i)));
+    for (var i = 0; i < opts.CarnivoreCount; i++)
+        SpawnOne(DefaultSpecies.Carnivore, new DefaultCarnivore(new Random(opts.Seed * 1000 + 500 + i)));
+}
+else
+{
+    // DSL population: behaviour loaded from text files (per-kind counts).
+    var models = DslLoader.Load(opts.Creatures);
+    System.Console.WriteLine($"# Loaded {models.Count} DSL creature(s) from {opts.Creatures}");
+    var modelIndex = 0;
+    foreach (var model in models)
+    {
+        var kind = DslLoader.KindOf(model);
+        var species = new Species(model.Name, kind, TraitsFor(kind));
+        var count = CountFor(kind);
+        for (var i = 0; i < count; i++)
+        {
+            var rng = new Random(opts.Seed * 1000 + modelIndex * 100 + i);
+            SpawnOne(species, new RuleInterpreter(model, rng));
+        }
+        modelIndex++;
+    }
+}
 
 // ── Graceful Ctrl-C ──────────────────────────────────────────────────────
 using var cts = new CancellationTokenSource();

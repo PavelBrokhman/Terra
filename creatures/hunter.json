@@ -1,0 +1,13 @@
+{
+  "name": "Hunter",
+  "species": "Carnivore",
+  "prey": "Herbivore",
+  "rules": [
+    { "when": "carcass_in_range",      "do": "eat_carcass",      "priority": 60 },
+    { "when": "carcass_visible",       "do": "approach_carcass", "priority": 55 },
+    { "when": "can_reproduce",         "do": "reproduce",        "priority": 50 },
+    { "when": "prey_in_attack_range",  "do": "attack",           "priority": 40 },
+    { "when": "prey_visible",          "do": "approach",         "priority": 30 },
+    { "when": "always",                "do": "wander",           "priority": 1  }
+  ]
+}

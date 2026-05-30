@@ -1,0 +1,13 @@
+{
+  "name": "Grazer",
+  "species": "Herbivore",
+  "prey": "Plant",
+  "threat": "Carnivore",
+  "rules": [
+    { "when": "threat_in_range",   "do": "defend",    "priority": 100 },
+    { "when": "can_reproduce",     "do": "reproduce", "priority": 50  },
+    { "when": "prey_in_eat_range", "do": "eat",       "priority": 40  },
+    { "when": "prey_visible",      "do": "approach",  "priority": 30  },
+    { "when": "always",            "do": "wander",    "priority": 1   }
+  ]
+}

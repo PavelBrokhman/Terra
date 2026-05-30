@@ -54,7 +54,43 @@ All options have defaults; override with `--key=value` or `--key value`.
 | `--carnivores=N` | `3` | initial carnivore count |
 | `--json-file=PATH` | _(off)_ | also write a JSON-Lines event stream to `PATH` |
 | `--quiet` | _(off)_ | suppress per-tick summary lines (keeps births/deaths/etc.) |
+| `--infant` | _(off)_ | spawn the initial population at radius 1 (shows growth) |
+| `--creatures=PATH` | _(off)_ | load behaviour from a DSL `.json` file or folder (see below) |
 | `--help`, `-h` | — | print help and exit |
+
+### Custom creatures (DSL)
+
+Behaviour can be authored as **text (JSON) rules** instead of compiled code — the
+in-process DSL adapter of `IOrganismBehavior`. Point `--creatures` at a file or a
+folder of `*.json`; the population is built from them (per-kind counts from
+`--plants`/`--herbivores`/`--carnivores`). Sample creatures live in `creatures/`:
+
+```bash
+dotnet run --project src/Terra.Console -- --ticks=400 --seed=7 --creatures=creatures --quiet
+```
+
+A creature file (see `creatures/grazer.json`):
+
+```json
+{
+  "name": "Grazer",
+  "species": "Herbivore",
+  "prey": "Plant",
+  "threat": "Carnivore",
+  "rules": [
+    { "when": "threat_in_range",   "do": "defend",   "priority": 100 },
+    { "when": "prey_in_eat_range", "do": "eat",      "priority": 40 },
+    { "when": "prey_visible",      "do": "approach", "priority": 30 },
+    { "when": "always",            "do": "wander",   "priority": 1 }
+  ]
+}
+```
+
+The highest-priority rule whose `when` signal is active wins. Signals: `always`,
+`can_reproduce`, `hungry`, `not_full`, `threat_in_range`, `prey_in_eat_range`,
+`prey_in_attack_range`, `prey_visible`, `carcass_in_range`, `carcass_visible`.
+Actions: `idle`, `reproduce`, `wander`, `defend`, `eat`, `eat_carcass`, `attack`,
+`approach`, `approach_carcass`.
 
 ### Examples
 
