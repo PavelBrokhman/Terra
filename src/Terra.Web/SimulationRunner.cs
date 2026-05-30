@@ -14,7 +14,13 @@ public sealed class SimulationOptions
     public int Height { get; set; } = 400;
     public int MaxTicks { get; set; } = 5000;
     /// <summary>Wall-clock pacing between ticks so the browser sees it live.</summary>
-    public int TickDelayMs { get; set; } = 100;
+    public int TickDelayMs { get; set; } = 150;
+    /// <summary>
+    /// Stream high-frequency OrganismMoved events too. Off by default: moves are
+    /// the bulk of the event volume and flood the browser; the log shows the
+    /// meaningful events (born/ate/attack/died/reproduce) instead.
+    /// </summary>
+    public bool StreamMoves { get; set; }
     public int Plants { get; set; } = 30;
     public int Herbivores { get; set; } = 10;
     public int Carnivores { get; set; } = 3;
@@ -54,6 +60,7 @@ public sealed class SimulationRunner(Broadcaster broadcaster, SimulationOptions 
 
         bus.SubscribeAll(evt =>
         {
+            if (!opts.StreamMoves && evt is OrganismMoved) return; // moves are the bulk; skip by default
             var line = _formatter.Format(evt);
             if (line is not null) broadcaster.Publish(line);
         });

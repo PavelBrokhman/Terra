@@ -159,9 +159,10 @@ dotnet run --project src/Terra.Web -- --Simulation:Creatures=creatures --Simulat
 | `Simulation:Seed` | `42` | PRNG seed |
 | `Simulation:Width` / `:Height` | `400` | world size |
 | `Simulation:MaxTicks` | `5000` | default tick budget (the Run box overrides it) |
-| `Simulation:TickDelayMs` | `100` | wall-clock pacing between ticks (so it's watchable) |
+| `Simulation:TickDelayMs` | `150` | wall-clock pacing between ticks (so it's watchable) |
 | `Simulation:Plants` / `:Herbivores` / `:Carnivores` | `30`/`10`/`3` | per-kind counts |
 | `Simulation:Creatures` | _(off)_ | DSL creature file/folder |
+| `Simulation:StreamMoves` | `false` | also stream `OrganismMoved` (off = much lighter feed) |
 
 > A browser that connects mid-run sees events from connect time onward (no
 > history replay yet).

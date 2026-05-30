@@ -1,3 +1,4 @@
+using System.Text;
 using Terra.Web;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +30,11 @@ app.MapGet("/events", async (HttpContext ctx, Broadcaster bc) =>
     {
         await foreach (var line in reader.ReadAllAsync(ctx.RequestAborted))
         {
-            await ctx.Response.WriteAsync($"data: {line}\n\n", ctx.RequestAborted);
+            // Coalesce a tick's burst of events into a single write + flush.
+            var sb = new StringBuilder().Append("data: ").Append(line).Append("\n\n");
+            while (reader.TryRead(out var more))
+                sb.Append("data: ").Append(more).Append("\n\n");
+            await ctx.Response.WriteAsync(sb.ToString(), ctx.RequestAborted);
             await ctx.Response.Body.FlushAsync(ctx.RequestAborted);
         }
     }
