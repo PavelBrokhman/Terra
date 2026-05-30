@@ -57,6 +57,33 @@
     const es = new EventSource('/events');
     es.onopen = () => { statusEl.textContent = 'connected'; };
     es.onerror = () => { statusEl.textContent = 'disconnected'; };
+    // Buffer events and flush to the DOM once per animation frame, so a burst
+    // of events in one tick becomes a single DOM update (smooth under load).
+    let buffer = [];
+    let flushScheduled = false;
+    function scheduleFlush() {
+      if (flushScheduled) return;
+      flushScheduled = true;
+      requestAnimationFrame(flushBuffer);
+    }
+    function flushBuffer() {
+      flushScheduled = false;
+      if (buffer.length === 0) return;
+      const events = buffer; buffer = [];
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
+      const frag = document.createDocumentFragment();
+      for (const e of events) {
+        const [text, cls] = describe(e);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `<span class="t">[t=${pad(e.tick)}]</span> <span class="${cls}">${text}</span>`;
+        frag.appendChild(row);
+      }
+      logEl.appendChild(frag);
+      while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
+      if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+    }
+
     es.onmessage = (msg) => {
       let e; try { e = JSON.parse(msg.data); } catch { return; }
       if (e.type === 'TickCompleted') {
@@ -64,18 +91,14 @@
         statsEl.innerHTML = `t=<b>${e.tick}</b>  P=${e.plantCount} H=${e.herbivoreCount} C=${e.carnivoreCount}  total=<b>${total}</b>`;
         return; // keep the per-tick noise out of the log
       }
-      const [text, cls] = describe(e);
-      const row = document.createElement('div');
-      row.className = 'row';
-      row.innerHTML = `<span class="t">[t=${pad(e.tick)}]</span> <span class="${cls}">${text}</span>`;
-      logEl.appendChild(row);
-      while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 60;
-      if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+      buffer.push(e);
+      if (buffer.length > 3000) buffer.splice(0, buffer.length - 3000); // safety cap
+      scheduleFlush();
     };
 
     document.getElementById('run').onclick = async () => {
       const ticks = parseInt(document.getElementById('ticks').value, 10) || 5000;
+      buffer = [];
       logEl.innerHTML = '';
       statsEl.textContent = `starting ${ticks} ticks…`;
       try { await fetch('/run?ticks=' + ticks, { method: 'POST' }); }

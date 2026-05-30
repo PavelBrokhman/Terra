@@ -141,6 +141,9 @@ dotnet run --project src/Terra.Web
 # then open http://localhost:5000
 ```
 
+Open it in a **real browser** (Chrome / Edge / Firefox) — **not** VS Code's
+embedded Simple Browser, which struggles with the live SSE feed.
+
 The page has a **ticks** box (default 5000) and a **Run** button — set the tick
 count and click **Run** to start (or restart) a run. It shows a live event log
 (born / moved / ate / attack / died …) plus a P/H/C stats line, updating per
