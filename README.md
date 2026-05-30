@@ -16,6 +16,8 @@ dotnet run --project src/Terra.Console -- --help
 
 98 passing tests, 0 warnings.
 
+See [RUNNING.md](RUNNING.md) for full build/run instructions and [TESTING.md](TESTING.md) for test guidance.
+
 ## Project Structure
 
 ```
