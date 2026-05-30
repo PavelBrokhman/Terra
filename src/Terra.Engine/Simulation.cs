@@ -18,6 +18,9 @@ public sealed class Simulation
     private readonly IEventBus _bus;
     private readonly SimulationConfig _config;
     private readonly Random _rng;
+    // Separate deterministic stream for perception (camouflage) so vision rolls
+    // never perturb the action/combat/spawn RNG.
+    private readonly Random _visionRng;
     private readonly Dictionary<OrganismId, IOrganismBehavior> _behaviors = new();
 
     public Simulation(World world, IEventBus bus, SimulationConfig config)
@@ -26,6 +29,7 @@ public sealed class Simulation
         _bus = bus ?? throw new ArgumentNullException(nameof(bus));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _rng = new Random(_config.Seed);
+        _visionRng = new Random(_config.Seed + 12345);
     }
 
     public World World => _world;
@@ -424,9 +428,17 @@ public sealed class Simulation
         var selfSnapshot = Snapshot(self);
         var range = GameRules.EyesightRadiusPixels(self.Species.Traits);
         var visible = new List<OrganismSnapshot>();
-        foreach (var other in _world.OrganismsNear(self.Position, range, exclude: self.Id))
+        // Deterministic order so camouflage rolls are reproducible for a seed.
+        foreach (var other in _world.OrganismsNear(self.Position, range, exclude: self.Id)
+                     .OrderBy(o => o.Id.Value))
         {
-            // Carcasses stay visible so carnivores can find food to scavenge.
+            // Camouflage: a living animal may hide from this scan (legacy parity).
+            // Carcasses always stay visible so carnivores can find food.
+            if (other.IsAlive)
+            {
+                var odds = GameRules.InvisibleOdds(other.Species.Kind, other.Species.Traits);
+                if (odds > 0 && _visionRng.Next(1, 100) <= odds) continue;
+            }
             visible.Add(Snapshot(other));
         }
         return new WorldViewImpl(

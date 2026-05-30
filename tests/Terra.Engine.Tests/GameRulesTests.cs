@@ -89,6 +89,24 @@ public class GameRulesTests
         Assert.Equal(expected, GameRules.EyesightRadiusPixels(Traits(eyes: points)));
     }
 
+    // ── InvisibleOdds (camouflage) ───────────────────────────────────────
+    [Theory]
+    [InlineData(0, 0)]      // no camouflage
+    [InlineData(50, 45)]    // 50/100 × 90
+    [InlineData(100, 90)]   // maximum
+    public void InvisibleOdds_ScalesWithCamouflage(int camo, int expected)
+    {
+        var traits = new SpeciesTraits { CamouflagePoints = camo, MatureSize = 30 };
+        Assert.Equal(expected, GameRules.InvisibleOdds(SpeciesKind.Herbivore, traits));
+    }
+
+    [Fact]
+    public void InvisibleOdds_PlantsAlwaysVisible()
+    {
+        var traits = new SpeciesTraits { CamouflagePoints = 100, MatureSize = 30 };
+        Assert.Equal(0, GameRules.InvisibleOdds(SpeciesKind.Plant, traits));
+    }
+
     // ── MetabolismCost ───────────────────────────────────────────────────
     [Fact]
     public void MetabolismCost_Plant_IsRadius()

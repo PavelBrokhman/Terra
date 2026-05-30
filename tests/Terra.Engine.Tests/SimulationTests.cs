@@ -19,6 +19,16 @@ public class SimulationTests
         public OrganismAction OnTick(IWorldView sense) => new EatAction(target);
     }
 
+    private sealed class RecordingBehavior(OrganismId target) : IOrganismBehavior
+    {
+        public readonly List<bool> TargetSeen = new();
+        public OrganismAction OnTick(IWorldView sense)
+        {
+            TargetSeen.Add(sense.Visible.Any(v => v.Id == target));
+            return IdleAction.Instance;
+        }
+    }
+
     private static Species Plant(int matureSize = 30) => new(
         "P", SpeciesKind.Plant,
         new SpeciesTraits
@@ -299,6 +309,29 @@ public class SimulationTests
         Assert.All(ate, e => Assert.Equal(hunterId, e.EaterId));
         world.TryGetOrganism(hunterId, out var afterTick2);
         Assert.True(afterTick2.Energy > energyAfterTick1);
+    }
+
+    [Fact]
+    public void Camouflage_HidesHighCamouflageAnimal_SomeTicksNotOthers()
+    {
+        var (_, _, sim) = Make(seed: 5);
+        // Observer (id 1): wide-enough eyesight, just idles and records.
+        var observer = new RecordingBehavior(new OrganismId(2));
+        sim.Spawn(Herbivore(), observer, new Position(100, 100), 15, 1_000_000);
+
+        // Target (id 2): max-camouflage herbivore, adjacent and idle.
+        var camoTarget = new Species("HC", SpeciesKind.Herbivore, new SpeciesTraits
+        {
+            MaximumEnergyPoints = 20, MaximumSpeedPoints = 0, EatingSpeedPoints = 0,
+            AttackDamagePoints = 0, DefendDamagePoints = 0, EyesightPoints = 0,
+            CamouflagePoints = 100, MatureSize = 30,
+        });
+        sim.Spawn(camoTarget, new IdleBehavior(), new Position(120, 100), 15, 1_000_000);
+
+        for (var i = 0; i < 100; i++) sim.TickOnce();
+
+        Assert.Contains(true, observer.TargetSeen);   // visible on some ticks
+        Assert.Contains(false, observer.TargetSeen);  // hidden by camouflage on others
     }
 
     [Fact]

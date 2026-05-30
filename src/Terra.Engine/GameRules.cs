@@ -64,6 +64,16 @@ public static class GameRules
     }
 
     /// <summary>
+    /// Odds (percent, 0–90) that this organism goes unseen by a scan, from its
+    /// CamouflagePoints. Only animals camouflage; plants are always visible.
+    /// Legacy AnimalWorldBoundary: a roll of 1..99 ≤ odds → hidden.
+    /// </summary>
+    public static int InvisibleOdds(SpeciesKind kind, SpeciesTraits traits) =>
+        kind == SpeciesKind.Plant
+            ? 0
+            : (int)(traits.CamouflagePoints / 100.0 * EngineConstants.InvisibilityOddsMaximum);
+
+    /// <summary>
     /// Per-tick metabolism cost. Plants: 1 × radius. Animals: 0.001 × radius.
     /// Plants ALSO gain up to <see cref="EngineConstants.MaxEnergyFromLightPerTick"/>
     /// from photosynthesis (see <see cref="PhotosynthesisGain"/>).
