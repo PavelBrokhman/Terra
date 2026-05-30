@@ -29,6 +29,16 @@ public class SimulationTests
         }
     }
 
+    private sealed class FeedbackBehavior(OrganismAction action) : IOrganismBehavior
+    {
+        public readonly List<ActionOutcome?> Outcomes = new();
+        public OrganismAction OnTick(IWorldView sense)
+        {
+            Outcomes.Add(sense.LastAction);   // outcome of the previous tick
+            return action;
+        }
+    }
+
     private static Species Plant(int matureSize = 30) => new(
         "P", SpeciesKind.Plant,
         new SpeciesTraits
@@ -309,6 +319,24 @@ public class SimulationTests
         Assert.All(ate, e => Assert.Equal(hunterId, e.EaterId));
         world.TryGetOrganism(hunterId, out var afterTick2);
         Assert.True(afterTick2.Energy > energyAfterTick1);
+    }
+
+    [Fact]
+    public void Behavior_ReceivesPreviousActionOutcome()
+    {
+        var (_, _, sim) = Make();
+        // Target plant far out of eating range → the eat fails with OutOfRange.
+        var plantId = sim.Spawn(Plant(), new IdleBehavior(), new Position(180, 180), 5, 1000);
+        var eater = new FeedbackBehavior(new EatAction(plantId));
+        sim.Spawn(Herbivore(), eater, new Position(20, 20), 5, 1_000_000);
+
+        sim.TickOnce(); // attempts the eat (no prior outcome yet)
+        sim.TickOnce(); // observes the failed-eat outcome
+
+        Assert.Null(eater.Outcomes[0]);                                  // nothing acted yet
+        Assert.NotNull(eater.Outcomes[1]);
+        Assert.Equal(ActionOutcomeReason.OutOfRange, eater.Outcomes[1]!.Value.Reason);
+        Assert.False(eater.Outcomes[1]!.Value.Succeeded);
     }
 
     [Fact]

@@ -181,48 +181,36 @@ public sealed class Simulation
 
     private void ApplyAction(OrganismState state, OrganismAction action)
     {
-        switch (action)
+        var reason = action switch
         {
-            case IdleAction:
-                break;
-
-            case MoveAction move:
-                ApplyMove(state, move);
-                break;
-
-            case EatAction eat:
-                ApplyEat(state, eat);
-                break;
-
-            case AttackAction attack:
-                ApplyAttack(state, attack);
-                break;
-
-            case DefendAction defend:
-                state.IsDefending = true;
-                _bus.Publish(new OrganismDefended(_world.Tick, state.Id, defend.Against));
-                break;
-
-            case ReproduceAction:
-                ApplyReproduceStart(state);
-                break;
-
-            default:
-                break;
-        }
+            MoveAction move     => ApplyMove(state, move),
+            EatAction eat       => ApplyEat(state, eat),
+            AttackAction attack => ApplyAttack(state, attack),
+            DefendAction defend => ApplyDefend(state, defend),
+            ReproduceAction     => ApplyReproduceStart(state),
+            _                   => ActionOutcomeReason.Idle,   // IdleAction / unknown
+        };
+        state.LastAction = new ActionOutcome(action, reason);
     }
 
-    private void ApplyMove(OrganismState state, MoveAction move)
+    private ActionOutcomeReason ApplyDefend(OrganismState state, DefendAction defend)
+    {
+        state.IsDefending = true;
+        _bus.Publish(new OrganismDefended(_world.Tick, state.Id, defend.Against));
+        return ActionOutcomeReason.Ok;
+    }
+
+    private ActionOutcomeReason ApplyMove(OrganismState state, MoveAction move)
     {
         var maxSpeed = GameRules.MaxSpeed(state.Species.Traits);
         var speed = Math.Clamp(move.Speed, 0, maxSpeed);
-        if (speed <= 0) return;
+        if (speed <= 0) return ActionOutcomeReason.Idle;
 
         var from = state.Position;
         var dx = move.Target.X - from.X;
         var dy = move.Target.Y - from.Y;
         var distance = Math.Sqrt((double)dx * dx + dy * dy);
-        if (distance <= 0) return;
+        if (distance <= 0) return ActionOutcomeReason.Idle;
 
         var step = Math.Min(distance, speed);
         var nx = (int)Math.Round(from.X + dx / distance * step);
@@ -232,7 +220,7 @@ public sealed class Simulation
         nx = Math.Clamp(nx, 0, _world.Width - 1);
         ny = Math.Clamp(ny, 0, _world.Height - 1);
         var to = new Position(nx, ny);
-        if (to == from) return;
+        if (to == from) return ActionOutcomeReason.Blocked;
 
         // Collision: don't overlap others. Clip to the farthest free point along
         // the path so the mover can still approach to eat/attack range (which
@@ -240,17 +228,18 @@ public sealed class Simulation
         if (!_world.IsSpaceFree(to, state.Radius, state.Id))
         {
             to = ClipToFree(from, to, state.Radius, state.Id);
-            if (to == from) return;
+            if (to == from) return ActionOutcomeReason.Blocked;
         }
 
         // Energy cost; refuse the move if unaffordable.
         var actualDistance = from.DistanceTo(to);
         var cost = GameRules.MovementEnergyCost(state.Radius, actualDistance, speed);
-        if (cost > state.Energy) return;
+        if (cost > state.Energy) return ActionOutcomeReason.Unaffordable;
 
         state.Energy -= cost;
         _world.MoveOrganism(state.Id, to);
         _bus.Publish(new OrganismMoved(_world.Tick, state.Id, from, to));
+        return ActionOutcomeReason.Ok;
     }
 
     private static readonly double[] ClipFractions = { 0.75, 0.5, 0.25 };
@@ -268,24 +257,25 @@ public sealed class Simulation
         return from;
     }
 
-    private void ApplyEat(OrganismState eater, EatAction eat)
+    private ActionOutcomeReason ApplyEat(OrganismState eater, EatAction eat)
     {
-        if (!_world.TryGetOrganism(eat.Target, out var target)) return;
-        if (!GameRules.CanEat(eater.Species.Kind, target.Species.Kind)) return;
+        if (!_world.TryGetOrganism(eat.Target, out var target)) return ActionOutcomeReason.InvalidTarget;
+        if (!GameRules.CanEat(eater.Species.Kind, target.Species.Kind)) return ActionOutcomeReason.InvalidTarget;
 
         // Plants are eaten alive; animals only as carcasses (legacy DoBites:2302).
         var targetIsPlant = target.Species.Kind == SpeciesKind.Plant;
-        if (targetIsPlant ? !target.IsAlive : target.IsAlive) return;
+        if (targetIsPlant ? !target.IsAlive : target.IsAlive) return ActionOutcomeReason.InvalidTarget;
 
-        if (!GameRules.InEatingRange(eater.Position, eater.Radius, target.Position, target.Radius)) return;
+        if (!GameRules.InEatingRange(eater.Position, eater.Radius, target.Position, target.Radius))
+            return ActionOutcomeReason.OutOfRange;
 
         // Full eaters refuse to eat (matches original Terrarium's eating rule).
         var eaterState = GameRules.ClassifyEnergyState(eater.Energy, eater.Species.Traits, eater.Radius);
-        if (eaterState == EnergyState.Full) return;
+        if (eaterState == EnergyState.Full) return ActionOutcomeReason.Full;
 
         var biteSize = GameRules.EatingChunksPerBite(eater.Species.Traits, eater.Radius);
         var chunks = Math.Min(biteSize, target.FoodChunks);
-        if (chunks <= 0) return;
+        if (chunks <= 0) return ActionOutcomeReason.InvalidTarget;
 
         target.FoodChunks -= chunks;
         var energyPerChunk = targetIsPlant
@@ -302,6 +292,8 @@ public sealed class Simulation
         // A carcass eaten down to nothing is removed (the death was already emitted).
         if (!targetIsPlant && target.FoodChunks <= 0)
             _world.RemoveOrganism(target.Id);
+
+        return ActionOutcomeReason.Ok;
     }
 
     private void ApplyReproduction(List<OrganismId> order)
@@ -337,18 +329,19 @@ public sealed class Simulation
         }
     }
 
-    private void ApplyReproduceStart(OrganismState state)
+    private ActionOutcomeReason ApplyReproduceStart(OrganismState state)
     {
-        if (state.IsIncubating) return;
-        if (!state.IsMature) return;
-        if (state.ReproductionWait > 0) return;
+        if (state.IsIncubating) return ActionOutcomeReason.NotReady;
+        if (!state.IsMature) return ActionOutcomeReason.NotReady;
+        if (state.ReproductionWait > 0) return ActionOutcomeReason.NotReady;
         var energyState = GameRules.ClassifyEnergyState(
             state.Energy, state.Species.Traits, state.Radius);
-        if (energyState < EnergyState.Normal) return;
+        if (energyState < EnergyState.Normal) return ActionOutcomeReason.NotReady;
 
         state.IncubationTicksRemaining = EngineConstants.TicksToIncubate;
         _bus.Publish(new ReproductionStarted(
             _world.Tick, state.Id, EngineConstants.TicksToIncubate));
+        return ActionOutcomeReason.Ok;
     }
 
     private void SpawnOffspring(OrganismState parent)
@@ -381,11 +374,14 @@ public sealed class Simulation
         _bus.Publish(new ReproductionCompleted(_world.Tick, parent.Id, baby.Id));
     }
 
-    private void ApplyAttack(OrganismState attacker, AttackAction attack)
+    private ActionOutcomeReason ApplyAttack(OrganismState attacker, AttackAction attack)
     {
-        if (!_world.TryGetOrganism(attack.Target, out var target) || !target.IsAlive) return;
-        if (!GameRules.CanAttack(attacker.Species.Kind, target.Species.Kind)) return;
-        if (!GameRules.InAttackRange(attacker.Position, attacker.Radius, target.Position, target.Radius)) return;
+        if (!_world.TryGetOrganism(attack.Target, out var target) || !target.IsAlive)
+            return ActionOutcomeReason.InvalidTarget;
+        if (!GameRules.CanAttack(attacker.Species.Kind, target.Species.Kind))
+            return ActionOutcomeReason.InvalidTarget;
+        if (!GameRules.InAttackRange(attacker.Position, attacker.Radius, target.Position, target.Radius))
+            return ActionOutcomeReason.OutOfRange;
 
         var attackMax = GameRules.MaxAttackDamage(
             attacker.Species.Traits, attacker.Radius, attacker.Species.Kind);
@@ -403,6 +399,7 @@ public sealed class Simulation
         _bus.Publish(new OrganismAttacked(
             _world.Tick, attacker.Id, target.Id,
             attackRoll, defenseRoll, damage, target.DamageTaken, target.IsDefending));
+        return ActionOutcomeReason.Ok;
     }
 
     private void CollectDeaths(List<OrganismId> order)
@@ -485,7 +482,7 @@ public sealed class Simulation
             visible.Add(Snapshot(other));
         }
         return new WorldViewImpl(
-            selfSnapshot, visible, _world.Tick, _world.Width, _world.Height);
+            selfSnapshot, visible, _world.Tick, _world.Width, _world.Height, self.LastAction);
     }
 
     private static OrganismSnapshot Snapshot(OrganismState s) => new(
@@ -507,12 +504,14 @@ public sealed class Simulation
         IReadOnlyCollection<OrganismSnapshot> visible,
         int tick,
         int width,
-        int height) : IWorldView
+        int height,
+        ActionOutcome? lastAction) : IWorldView
     {
         public OrganismSnapshot Self { get; } = self;
         public IReadOnlyCollection<OrganismSnapshot> Visible { get; } = visible;
         public int Tick { get; } = tick;
         public int WorldWidth { get; } = width;
         public int WorldHeight { get; } = height;
+        public ActionOutcome? LastAction { get; } = lastAction;
     }
 }

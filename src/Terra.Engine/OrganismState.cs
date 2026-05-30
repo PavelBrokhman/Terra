@@ -61,6 +61,13 @@ public sealed class OrganismState
     /// </summary>
     public int RotTicks { get; internal set; }
 
+    /// <summary>
+    /// Outcome of the action this organism performed on the previous tick, fed
+    /// back to its behaviour via <see cref="IWorldView.LastAction"/>. Null until
+    /// it has acted at least once.
+    /// </summary>
+    public ActionOutcome? LastAction { get; internal set; }
+
     internal OrganismState(
         OrganismId id,
         Species species,

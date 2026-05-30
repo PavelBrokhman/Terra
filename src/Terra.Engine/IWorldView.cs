@@ -23,4 +23,11 @@ public interface IWorldView
     /// <summary>World dimensions in pixels.</summary>
     int WorldWidth { get; }
     int WorldHeight { get; }
+
+    /// <summary>
+    /// Outcome of this organism's action on the previous tick (whether its move,
+    /// eat, attack, etc. succeeded and why), or null if it has not acted yet.
+    /// Lets a behaviour adapt — e.g. pick a new target if its last eat failed.
+    /// </summary>
+    ActionOutcome? LastAction { get; }
 }

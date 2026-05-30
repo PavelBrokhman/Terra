@@ -27,6 +27,7 @@ public class DefaultBehaviorsTests
         public int Tick => 0;
         public int WorldWidth { get; } = width;
         public int WorldHeight { get; } = height;
+        public ActionOutcome? LastAction => null;
     }
 
     // ── DefaultPlant ─────────────────────────────────────────────────────
