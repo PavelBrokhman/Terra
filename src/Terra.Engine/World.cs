@@ -105,6 +105,23 @@ public sealed class World
         }
     }
 
+    /// <summary>
+    /// True if a body of the given <paramref name="radius"/> centred at
+    /// <paramref name="p"/> would not overlap any other organism (alive or
+    /// carcass). Two bodies overlap when the distance between centres is less
+    /// than the sum of their radii.
+    /// </summary>
+    public bool IsSpaceFree(Position p, int radius, OrganismId? exclude = null)
+    {
+        // Any potential overlapper has its centre within radius + its own radius;
+        // the largest possible radius is half the max mature size.
+        var reach = radius + EngineConstants.MaxMatureSize / 2;
+        foreach (var o in OrganismsNear(p, reach, exclude))
+            if (p.DistanceTo(o.Position) < radius + o.Radius)
+                return false;
+        return true;
+    }
+
     /// <summary>Advance the tick counter by one. Called by <see cref="Simulation"/>.</summary>
     public void AdvanceTick() => Tick++;
 

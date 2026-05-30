@@ -118,6 +118,23 @@ public class WorldTests
     }
 
     [Fact]
+    public void IsSpaceFree_DetectsOverlap()
+    {
+        var w = MakeWorld();
+        w.AddOrganism(PlantSpecies(), new Position(50, 50), radius: 5, energy: 1000);
+        Assert.False(w.IsSpaceFree(new Position(58, 50), radius: 5)); // 8 < 5+5 → overlap
+        Assert.True(w.IsSpaceFree(new Position(62, 50), radius: 5));  // 12 ≥ 5+5 → clear
+    }
+
+    [Fact]
+    public void IsSpaceFree_ExcludesSelf()
+    {
+        var w = MakeWorld();
+        var o = w.AddOrganism(PlantSpecies(), new Position(50, 50), radius: 5, energy: 1000);
+        Assert.True(w.IsSpaceFree(new Position(50, 50), radius: 5, exclude: o.Id));
+    }
+
+    [Fact]
     public void AdvanceTick_IncrementsCounter()
     {
         var w = MakeWorld();

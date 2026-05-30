@@ -312,6 +312,36 @@ public class SimulationTests
     }
 
     [Fact]
+    public void Move_IsClippedToAvoidOverlap()
+    {
+        var (world, _, sim) = Make();
+        var aId = sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 5, 1_000_000);
+        var bId = sim.Spawn(Herbivore(speed: 100), new FixedMoveBehavior(new Position(50, 50), 100),
+            new Position(90, 50), 5, 1_000_000);
+
+        sim.TickOnce();
+
+        world.TryGetOrganism(aId, out var a);
+        world.TryGetOrganism(bId, out var b);
+        Assert.NotEqual(new Position(90, 50), b.Position);                 // advanced toward A
+        Assert.True(a.Position.DistanceTo(b.Position) >= a.Radius + b.Radius); // but no overlap
+    }
+
+    [Fact]
+    public void Growth_IsBlocked_WhenNoRoom()
+    {
+        var (world, _, sim) = Make();
+        // Two r5 animals touching (distance 10 = r5+r5): neither can grow to r6.
+        var aId = sim.Spawn(Herbivore(), new IdleBehavior(), new Position(50, 50), 5, 10_000_000);
+        sim.Spawn(Herbivore(), new IdleBehavior(), new Position(60, 50), 5, 10_000_000);
+
+        sim.TickOnce();
+
+        world.TryGetOrganism(aId, out var a);
+        Assert.Equal(5, a.Radius); // growth blocked by the neighbour
+    }
+
+    [Fact]
     public void Camouflage_HidesHighCamouflageAnimal_SomeTicksNotOthers()
     {
         var (_, _, sim) = Make(seed: 5);

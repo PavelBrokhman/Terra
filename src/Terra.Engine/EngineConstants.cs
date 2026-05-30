@@ -74,5 +74,5 @@ public static class EngineConstants
 
     // ── Offspring placement (Phase 2 default; not a verbatim legacy value) ─
     public const int PlantSeedSpreadRadius = 64;   // plant seeds drift near parent
-    public const int AnimalBirthSpreadRadius = 24; // animals born close to parent
+    public const int AnimalBirthSpreadRadius = 40; // animals born near parent (clear of its body)
 }

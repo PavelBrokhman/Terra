@@ -144,6 +144,8 @@ public sealed class Simulation
             if (state.Radius >= state.Species.MatureRadius) continue;
             if (state.GrowthWait > 0) { state.GrowthWait--; continue; }
             if (state.Energy < growthCost) continue;
+            // No room to grow into without overlapping a neighbour.
+            if (!_world.IsSpaceFree(state.Position, state.Radius + 1, exclude: state.Id)) continue;
 
             state.Energy -= growthCost;
             state.Radius++;
@@ -231,6 +233,15 @@ public sealed class Simulation
         var to = new Position(nx, ny);
         if (to == from) return;
 
+        // Collision: don't overlap others. Clip to the farthest free point along
+        // the path so the mover can still approach to eat/attack range (which
+        // permit contact). If nowhere is free, stay put.
+        if (!_world.IsSpaceFree(to, state.Radius, state.Id))
+        {
+            to = ClipToFree(from, to, state.Radius, state.Id);
+            if (to == from) return;
+        }
+
         // Energy cost; refuse the move if unaffordable.
         var actualDistance = from.DistanceTo(to);
         var cost = GameRules.MovementEnergyCost(state.Radius, actualDistance, speed);
@@ -239,6 +250,21 @@ public sealed class Simulation
         state.Energy -= cost;
         _world.MoveOrganism(state.Id, to);
         _bus.Publish(new OrganismMoved(_world.Tick, state.Id, from, to));
+    }
+
+    private static readonly double[] ClipFractions = { 0.75, 0.5, 0.25 };
+
+    /// <summary>Farthest point along from→to whose space is free, else <paramref name="from"/>.</summary>
+    private Position ClipToFree(Position from, Position to, int radius, OrganismId self)
+    {
+        foreach (var f in ClipFractions)
+        {
+            var cx = Math.Clamp((int)Math.Round(from.X + (to.X - from.X) * f), 0, _world.Width - 1);
+            var cy = Math.Clamp((int)Math.Round(from.Y + (to.Y - from.Y) * f), 0, _world.Height - 1);
+            var p = new Position(cx, cy);
+            if (p != from && _world.IsSpaceFree(p, radius, self)) return p;
+        }
+        return from;
     }
 
     private void ApplyEat(OrganismState eater, EatAction eat)
@@ -328,13 +354,21 @@ public sealed class Simulation
         // species' spread radius (polar offset → Euclidean ≤ radius), clamped
         // to world bounds.
         var spread = GameRules.OffspringSpreadRadius(parent.Species.Kind);
-        var angle = _rng.NextDouble() * 2 * Math.PI;
-        var dist = _rng.NextDouble() * spread;
-        var x = Math.Clamp((int)Math.Round(parent.Position.X + Math.Cos(angle) * dist), 0, _world.Width - 1);
-        var y = Math.Clamp((int)Math.Round(parent.Position.Y + Math.Sin(angle) * dist), 0, _world.Height - 1);
+        Position? spot = null;
+        for (var attempt = 0; attempt < 20; attempt++)   // legacy FindEmptyPosition: 20 retries
+        {
+            var angle = _rng.NextDouble() * 2 * Math.PI;
+            var dist = _rng.NextDouble() * spread;
+            var x = Math.Clamp((int)Math.Round(parent.Position.X + Math.Cos(angle) * dist), 0, _world.Width - 1);
+            var y = Math.Clamp((int)Math.Round(parent.Position.Y + Math.Sin(angle) * dist), 0, _world.Height - 1);
+            var candidate = new Position(x, y);
+            if (_world.IsSpaceFree(candidate, radius: 1)) { spot = candidate; break; }
+        }
+        if (spot is null) return; // no free space near the parent — the seed fails to take
+
         var babyEnergy = GameRules.MaxEnergy(parent.Species.Traits, 1) / 2.0;
         var baby = _world.AddOrganism(
-            parent.Species, new Position(x, y),
+            parent.Species, spot.Value,
             radius: 1, energy: babyEnergy,
             generation: parent.Generation + 1);
         _behaviors[baby.Id] = _behaviors[parent.Id]; // shares parent's behavior instance
