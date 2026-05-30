@@ -44,56 +44,59 @@
 - **98 unit-тестов** (все green, 0 warnings)
 - Покрытие: domain types, GameRules, SpatialGrid, World, EventBus, Simulation (включая детерминизм), default behaviors, all three presenters
 
-## Что отложено (НЕ в Phase 1) ⏸️
+## Phase 2 — реализовано ✅ (ветка `DEV-Actions`, влита в `DEV`)
 
-### Actions — реализованы частично
+Всё, что было отложено из Phase 1, реализовано. Экосистема теперь
+**самоподдерживающаяся**: энергия рециклится через еду и туши.
+
+### Actions
 | Action | Статус |
 |---|---|
-| `IdleAction` | ✅ реализован |
-| `MoveAction` | ✅ реализован (clamp скорости, clamp границ, energy cost) |
-| `EatAction` | ⏸️ silently no-op (логика отложена) |
-| `AttackAction` | ⏸️ silently no-op |
-| `DefendAction` | ⏸️ silently no-op |
-| `ReproduceAction` | ⏸️ silently no-op |
+| `IdleAction` | ✅ |
+| `MoveAction` | ✅ clamp скорости/границ, energy cost, collision-clip |
+| `EatAction` | ✅ травоядные едят растения; хищники — туши животных |
+| `AttackAction` | ✅ броски атаки/защиты, урон, смерть по `DamageToKill` |
+| `DefendAction` | ✅ ×2 защита на тик |
+| `ReproduceAction` | ✅ 10-тиковая инкубация → потомок (`Generation+1`) |
 
-Следствие: хищники и травоядные достигают цели и останавливаются в 8 пикселях от неё (никто никого не ест). Экосистема **не схлопывается**, но и не эволюционирует.
+### Mechanics
+- **Growth** ✅ рост до `MatureRadius` (+ `OrganismGrown`)
+- **Collision detection** ✅ `World.IsSpaceFree`; move клипается к свободной точке, рост/спавн избегают overlap
+- **Camouflage** ✅ `InvisibleOdds` = camo/100×90% (отдельный детерминированный vision-RNG)
+- **Plant seed spreading** ✅ потомство спавнится рядом с родителем (spread-радиус)
+- **Carcass rot** ✅ туша живёт `TimeToRot=60` тиков; хищники её доедают, иначе она истлевает
 
-### Mechanics — не реализованы
-- **Growth** (изменение радиуса со временем) — организмы стартуют сразу с `MatureRadius`
-- **Collision detection** — overlap между организмами разрешён
-- **Camouflage** в визибилити — вероятностная проверка не применяется (все в eyesight radius видимы)
-- **Plant seed spreading** — растения не распространяются
-- **Carcass rot** — мёртвые удаляются сразу (нет `TimeToRot` фазы)
+### Events
+Реализованы: `SimulationStarted/Ended`, `TickCompleted`, `OrganismBorn/Moved/Died`,
+`OrganismGrown`, `OrganismAte`, `OrganismAttacked`, `OrganismDefended`,
+`ReproductionStarted/Completed`.
 
-### Events — базовый набор
-Реализованы: `SimulationStarted/Ended`, `TickCompleted`, `OrganismBorn/Moved/Died`.
-
-Отложены: `OrganismGrown`, `OrganismAte`, `OrganismAttacked` (с dmg), `OrganismDefended`, `ReproductionStarted/Completed`, `OrganismActionRejected`.
+`OrganismActionRejected` — **намеренно опущено** (broadcast-шум). Вместо него —
+приватный per-organism feedback через `IWorldView.LastAction`
+(Ok / OutOfRange / Unaffordable / Blocked / InvalidTarget / NotReady / Full),
+в духе legacy ActionResponse.
 
 ## Известные quirks
 
 1. **Порядок вывода при старте**: `OrganismBorn` события идут **до** `SimulationStarted`, потому что initial spawning происходит до вызова `Run()`. Семантически корректно (setup phase → tick loop), но может быть неожиданно. Исправим когда будет Phase 2 refactor.
 
-2. **Plants capped quickly**: при photosynthesis=550/tick растения быстро достигают `MaxEnergy` и идлят. Без роста/репродукции они просто стоят. Это baseline для следующих шагов.
+2. **Туши занимают место**: мёртвые тела участвуют в collision до истлевания — намеренно (хищник подходит к туше на eat-дистанцию, не накладываясь поверх).
 
-3. **Herbivores без жертв = wander**: без `EatAction` травоядные находят растение, подходят, останавливаются. Энергия расходуется только на движение и метаболизм — они умирают от old-age или starvation в зависимости от MaxSpeed/расстояния.
+3. **Vision-RNG отдельный**: camouflage-броски используют независимый от боевого/спавнового поток — детерминизм сохранён, и изменение сцены не сдвигает боевые броски.
 
 ## Ссылки
 
 - Детали правил: [Phase1_GameRules.md](Phase1_GameRules.md)
 - Главный roadmap: [Terrarium2.0_Modernization.md](Terrarium2.0_Modernization.md)
-- Ветка разработки: `DEV-Console`
-- Последний коммит Phase 1: `6768ec0`
+- God-sim модель правил: [03_Action_Energy_Model.md](03_Action_Energy_Model.md)
+- Ветки: Phase 1 — `DEV-Console`; Phase 2 (механики) — `DEV-Actions`, влита в `DEV`
 
-## Следующие шаги (Phase 1.1 или отдельная подветка)
+## Следующие шаги
 
-Приоритет для завершения «живой» экосистемы:
+Все 6 приоритетов «живой экосистемы» закрыты (eat, growth, attack/defend,
+reproduce, carcass rot, + camouflage / seed spreading / collision / события /
+action-feedback). Экосистема самоподдерживающаяся.
 
-1. **EatAction** (plant→herbivore, animal corpse→carnivore): позволит ресайкл энергии
-2. **OrganismAte event** + human/json формат
-3. **Growth** до `MatureRadius` (сейчас организмы рождаются взрослыми)
-4. **AttackAction + damage/defend formulas** (включает `DamageToKill = 190 × radius`)
-5. **ReproduceAction** + 10-tick incubation + `OrganismBorn` с `Generation` > 0
-6. **Carcass rot** + `TimeToRot = 60 ticks` + кормление хищников
-
-После этих 6 пунктов симуляция станет самоподдерживающейся экосистемой.
+Остаётся **не-механическая** часть Phase 2 — **загрузка пользовательских
+организмов**. По god-sim решениям (`02`/`03` доки) это DSL-авторинг
+(структурированные правила), а не компилируемый код. Отдельный будущий этап.
