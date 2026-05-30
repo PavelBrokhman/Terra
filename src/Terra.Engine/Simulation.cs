@@ -324,9 +324,14 @@ public sealed class Simulation
 
     private void SpawnOffspring(OrganismState parent)
     {
-        // Find a random position for the offspring (no collision check in Phase 2).
-        var x = _rng.Next(0, _world.Width);
-        var y = _rng.Next(0, _world.Height);
+        // Seed spreading: place the offspring near the parent within the
+        // species' spread radius (polar offset → Euclidean ≤ radius), clamped
+        // to world bounds.
+        var spread = GameRules.OffspringSpreadRadius(parent.Species.Kind);
+        var angle = _rng.NextDouble() * 2 * Math.PI;
+        var dist = _rng.NextDouble() * spread;
+        var x = Math.Clamp((int)Math.Round(parent.Position.X + Math.Cos(angle) * dist), 0, _world.Width - 1);
+        var y = Math.Clamp((int)Math.Round(parent.Position.Y + Math.Sin(angle) * dist), 0, _world.Height - 1);
         var babyEnergy = GameRules.MaxEnergy(parent.Species.Traits, 1) / 2.0;
         var baby = _world.AddOrganism(
             parent.Species, new Position(x, y),

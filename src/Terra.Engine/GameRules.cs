@@ -210,6 +210,17 @@ public static class GameRules
         a.DistanceTo(b) <= radiusA + radiusB + 16;
 
     /// <summary>
+    /// How far offspring may appear from the parent. Plants spread seeds a bit
+    /// further; animals are born close. Used to place offspring near the parent
+    /// instead of at a random world location.
+    /// </summary>
+    public static int OffspringSpreadRadius(SpeciesKind kind) => kind switch
+    {
+        SpeciesKind.Plant => EngineConstants.PlantSeedSpreadRadius,
+        _                 => EngineConstants.AnimalBirthSpreadRadius,
+    };
+
+    /// <summary>
     /// Ticks to wait between reproduction cycles. Plants: 25×radius, animals: 8×radius.
     /// </summary>
     public static int ReproductionWaitTicks(SpeciesKind kind, int radius) => kind switch

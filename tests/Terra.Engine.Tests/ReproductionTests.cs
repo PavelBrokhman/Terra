@@ -140,6 +140,30 @@ public class ReproductionTests
     }
 
     [Fact]
+    public void Offspring_SpawnsNearParent_WithinSeedSpread()
+    {
+        var (world, bus, sim) = Make();
+        var born = new List<OrganismBorn>();
+        bus.Subscribe<OrganismBorn>(born.Add);
+
+        var sp = Plant();
+        var parentPos = new Position(100, 100);
+        var id = sim.Spawn(sp, new ScriptedBehavior(ReproduceAction.Instance),
+            parentPos, radius: sp.MatureRadius, energy: 100_000_000);
+        world.TryGetOrganism(id, out var parent);
+        parent.ReproductionWait = 0;
+
+        for (var i = 0; i < 11; i++) sim.TickOnce();
+
+        Assert.Equal(2, born.Count);
+        world.TryGetOrganism(born[1].Id, out var baby);
+        // Seed lands within the plant spread radius of the parent (+1px rounding).
+        Assert.True(
+            parentPos.DistanceTo(baby.Position) <= EngineConstants.PlantSeedSpreadRadius + 1,
+            $"baby at {baby.Position}, dist={parentPos.DistanceTo(baby.Position)}");
+    }
+
+    [Fact]
     public void IncubationPauses_WhenEnergyDropsBelowNormal()
     {
         var (world, _, sim) = Make();

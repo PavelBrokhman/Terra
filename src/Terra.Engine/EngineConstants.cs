@@ -71,4 +71,8 @@ public static class EngineConstants
 
     // ── Misc ─────────────────────────────────────────────────────────────
     public const int MaxSeedSpreadDistance = 1000;           // :235
+
+    // ── Offspring placement (Phase 2 default; not a verbatim legacy value) ─
+    public const int PlantSeedSpreadRadius = 64;   // plant seeds drift near parent
+    public const int AnimalBirthSpreadRadius = 24; // animals born close to parent
 }
