@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Terra.Engine\Terra.Engine.csproj" />
     <ProjectReference Include="..\Terra.Behaviors.Default\Terra.Behaviors.Default.csproj" />
     <ProjectReference Include="..\Terra.Presentation.Text\Terra.Presentation.Text.csproj" />
+    <ProjectReference Include="..\Terra.Behaviors.Dsl\Terra.Behaviors.Dsl.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

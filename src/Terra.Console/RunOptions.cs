@@ -19,6 +19,12 @@ internal sealed record RunOptions
     public bool Quiet { get; init; }
     public bool Infant { get; init; }
 
+    /// <summary>
+    /// Path to a DSL creature file or a folder of <c>*.json</c> creatures. When
+    /// set, the population is built from these instead of the built-in defaults.
+    /// </summary>
+    public string? Creatures { get; init; }
+
     public static RunOptions Parse(string[] args)
     {
         var dict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -54,6 +60,7 @@ internal sealed record RunOptions
             JsonFile = StrOf("json-file"),
             Quiet = dict.ContainsKey("quiet"),
             Infant = dict.ContainsKey("infant"),
+            Creatures = StrOf("creatures"),
         };
     }
 
@@ -71,6 +78,9 @@ internal sealed record RunOptions
           --json-file=PATH       also write JSON-Lines event stream to file
           --quiet                suppress per-tick summary lines
           --infant               spawn initial population at radius=1 (shows growth)
+          --creatures=PATH       load DSL creature(s) from a .json file or folder
+                                 (replaces the built-in population; per-kind counts
+                                 from --plants/--herbivores/--carnivores)
           --help                 show this message
         """;
 }

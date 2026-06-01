@@ -1,7 +1,7 @@
 # Running Terra
 
-How to build and run the project. Current runnable target is the **Phase 1**
-console simulation (`Terra.Console`).
+How to build and run the project. Two runnable targets: the **console**
+(`Terra.Console`, text feed) and the **browser viewer** (`Terra.Web`, live SSE feed).
 
 ## Prerequisites
 
@@ -54,7 +54,43 @@ All options have defaults; override with `--key=value` or `--key value`.
 | `--carnivores=N` | `3` | initial carnivore count |
 | `--json-file=PATH` | _(off)_ | also write a JSON-Lines event stream to `PATH` |
 | `--quiet` | _(off)_ | suppress per-tick summary lines (keeps births/deaths/etc.) |
+| `--infant` | _(off)_ | spawn the initial population at radius 1 (shows growth) |
+| `--creatures=PATH` | _(off)_ | load behaviour from a DSL `.json` file or folder (see below) |
 | `--help`, `-h` | — | print help and exit |
+
+### Custom creatures (DSL)
+
+Behaviour can be authored as **text (JSON) rules** instead of compiled code — the
+in-process DSL adapter of `IOrganismBehavior`. Point `--creatures` at a file or a
+folder of `*.json`; the population is built from them (per-kind counts from
+`--plants`/`--herbivores`/`--carnivores`). Sample creatures live in `creatures/`:
+
+```bash
+dotnet run --project src/Terra.Console -- --ticks=400 --seed=7 --creatures=creatures --quiet
+```
+
+A creature file (see `creatures/grazer.json`):
+
+```json
+{
+  "name": "Grazer",
+  "species": "Herbivore",
+  "prey": "Plant",
+  "threat": "Carnivore",
+  "rules": [
+    { "when": "threat_in_range",   "do": "defend",   "priority": 100 },
+    { "when": "prey_in_eat_range", "do": "eat",      "priority": 40 },
+    { "when": "prey_visible",      "do": "approach", "priority": 30 },
+    { "when": "always",            "do": "wander",   "priority": 1 }
+  ]
+}
+```
+
+The highest-priority rule whose `when` signal is active wins. Signals: `always`,
+`can_reproduce`, `hungry`, `not_full`, `threat_in_range`, `prey_in_eat_range`,
+`prey_in_attack_range`, `prey_visible`, `carcass_in_range`, `carcass_visible`.
+Actions: `idle`, `reproduce`, `wander`, `defend`, `eat`, `eat_carcass`, `attack`,
+`approach`, `approach_carcass`.
 
 ### Examples
 
@@ -94,14 +130,63 @@ Simulation time is tick-based, never wall-clock. When filing a bug, include the
 exact command line (especially `--seed`, `--ticks`, and the counts) so the run
 can be reproduced bit-for-bit.
 
+## Web viewer (browser UI)
+
+A browser-based live view of the same simulation — the engine streams its event
+feed to the page over **Server-Sent Events** (logic is decoupled from rendering;
+the web client is just another subscriber).
+
+```bash
+dotnet run --project src/Terra.Web
+# then open http://localhost:5000
+```
+
+Open it in a **real browser** (Chrome / Edge / Firefox) — **not** VS Code's
+embedded Simple Browser, which struggles with the live SSE feed.
+
+The page has a **ticks** box (default 5000) and a **Run** button — set the tick
+count and click **Run** to start (or restart) a run. It shows a live event log
+(born / moved / ate / attack / died …) plus a P/H/C stats line, updating per
+tick. Other run parameters come from the `Simulation` config section:
+
+```bash
+# DSL creatures + custom params
+dotnet run --project src/Terra.Web -- --Simulation:Creatures=creatures --Simulation:Seed=7 --Simulation:TickDelayMs=100
+```
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `Simulation:Seed` | `42` | PRNG seed |
+| `Simulation:Width` / `:Height` | `400` | world size |
+| `Simulation:MaxTicks` | `5000` | default tick budget (the Run box overrides it) |
+| `Simulation:TickDelayMs` | `150` | wall-clock pacing between ticks (so it's watchable) |
+| `Simulation:Plants` / `:Herbivores` / `:Carnivores` | `30`/`10`/`3` | per-kind counts |
+| `Simulation:Creatures` | _(off)_ | DSL creature file/folder |
+| `Simulation:StreamMoves` | `false` | also stream `OrganismMoved` (off = much lighter feed) |
+| `Simulation:LogDir` | `runs` | folder for the per-run full event log (empty = off) |
+
+> A browser that connects mid-run sees events from connect time onward (no
+> live history replay).
+
+**Reviewing past runs.** The browser only keeps the latest ~200 lines (for
+smooth rendering), but every run writes its **complete** event stream — all
+events, including moves — to `runs/run-<time>-seed<N>.jsonl`. Review it with any
+editor or JSONL tooling:
+
+```bash
+cat runs/run-*.jsonl | jq 'select(.type == "OrganismDied")'   # or Select-String on Windows
+```
+
 ## Project layout
 
 ```
 src/
   Terra.Engine/              core simulation — no dependencies beyond BCL
   Terra.Behaviors.Default/   reference Plant / Herbivore / Carnivore behaviors
+  Terra.Behaviors.Dsl/       text-file (JSON) creature behaviour interpreter
   Terra.Presentation.Text/   human + JSON-Lines event formatters
-  Terra.Console/             CLI entry point (thin wiring layer)
+  Terra.Console/             CLI entry point (text/console)
+  Terra.Web/                 ASP.NET Core browser viewer (SSE live feed)
 tests/
   Terra.Engine.Tests/        xUnit tests (see TESTING.md)
 ```

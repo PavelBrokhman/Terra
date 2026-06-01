@@ -1,0 +1,8 @@
+{
+  "name": "Sprout",
+  "species": "Plant",
+  "rules": [
+    { "when": "can_reproduce", "do": "reproduce", "priority": 10 },
+    { "when": "always",        "do": "idle",      "priority": 1  }
+  ]
+}

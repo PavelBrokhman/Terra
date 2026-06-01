@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terra — live</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; }
+    body { font-family: ui-monospace, Consolas, monospace; background: #0e0f12; color: #d6d8dc;
+           margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+    #bar { flex: 0 0 auto; background: #1b1d22; border-bottom: 1px solid #2c2f36;
+           padding: 8px 12px; font-size: 13px; display: flex; gap: 16px; align-items: center; }
+    #bar b { color: #fff; } #status { margin-left: auto; color: #8a8f98; }
+    #log { flex: 1 1 auto; overflow-y: auto; padding: 8px 12px; font-size: 12px; line-height: 1.45;
+           contain: content; }
+    .row { white-space: pre-wrap; }
+    .t { color: #6b7280; }
+    .born { color: #6ee787; } .died { color: #ff7b72; } .ate { color: #79c0ff; }
+    .atk { color: #ffa657; } .repro { color: #d2a8ff; } .sim { color: #e3b341; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <span>🌱 <b>Terra</b></span>
+    <label>ticks <input id="ticks" type="number" value="5000" min="1" step="100" style="width:80px"></label>
+    <button id="run">Run</button>
+    <span id="stats">press Run to start…</span>
+    <span id="status">connecting…</span>
+  </div>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const statsEl = document.getElementById('stats');
+    const statusEl = document.getElementById('status');
+    const MAX_ROWS = 200;
+
+    const idOf = (x) => x == null ? '?' : ('#' + (x.value ?? x));
+    const pos = (p) => p == null ? '' : `(${p.x},${p.y})`;
+    const pad = (n) => String(n).padStart(4, '0');
+
+    function describe(e) {
+      switch (e.type) {
+        case 'SimulationStarted':  return [`=== started ${e.worldWidth}x${e.worldHeight}, ${e.initialOrganismCount} organisms, seed=${e.seed}`, 'sim'];
+        case 'SimulationEnded':    return [`=== ended: ${e.reason}, ${e.finalOrganismCount} remain`, 'sim'];
+        case 'OrganismBorn':       return [`Born  ${e.kind} ${idOf(e.id)} "${e.speciesName}" ${pos(e.position)} gen=${e.generation}`, 'born'];
+        case 'OrganismMoved':      return [`Moved ${idOf(e.id)} ${pos(e.from)} → ${pos(e.to)}`, ''];
+        case 'OrganismDied':       return [`Died  ${idOf(e.id)} "${e.speciesName}" ${pos(e.position)} age=${e.tickAge} [${e.reason}]`, 'died'];
+        case 'OrganismAte':        return [`Ate   ${idOf(e.eaterId)} → ${idOf(e.targetId)} chunks=${e.chunksEaten} (+${Math.round(e.energyGained)} e)`, 'ate'];
+        case 'OrganismGrown':      return [`Grew  ${idOf(e.id)} r=${e.newRadius}`, ''];
+        case 'OrganismAttacked':   return [`Atk   ${idOf(e.attackerId)} → ${idOf(e.targetId)} dmg=${e.damageDealt}${e.targetWasDefending ? '*' : ''}`, 'atk'];
+        case 'OrganismDefended':   return [`Def   ${idOf(e.defenderId)} vs ${idOf(e.againstId)}`, 'atk'];
+        case 'ReproductionStarted':   return [`Repro ${idOf(e.parentId)} incubating`, 'repro'];
+        case 'ReproductionCompleted': return [`Repro ${idOf(e.parentId)} → ${idOf(e.offspringId)}`, 'repro'];
+        default: return [e.type + ' ' + JSON.stringify(e), ''];
+      }
+    }
+
+    const es = new EventSource('/events');
+    es.onopen = () => { statusEl.textContent = 'connected'; };
+    es.onerror = () => { statusEl.textContent = 'disconnected'; };
+    // Buffer events and flush to the DOM once per animation frame, so a burst
+    // of events in one tick becomes a single DOM update (smooth under load).
+    let buffer = [];
+    let flushScheduled = false;
+    function scheduleFlush() {
+      if (flushScheduled) return;
+      flushScheduled = true;
+      setTimeout(flushBuffer, 120);   // coalesce a burst into ~one DOM update per tick
+    }
+    function flushBuffer() {
+      flushScheduled = false;
+      if (buffer.length === 0) return;
+      let events = buffer; buffer = [];
+      // Never render more than the visible cap in one frame — if we fell behind,
+      // older buffered rows would be trimmed away anyway. Bounds per-frame work.
+      if (events.length > MAX_ROWS) events = events.slice(-MAX_ROWS);
+      const nearBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 80;
+      const frag = document.createDocumentFragment();
+      for (const e of events) {
+        const [text, cls] = describe(e);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `<span class="t">[t=${pad(e.tick)}]</span> <span class="${cls}">${text}</span>`;
+        frag.appendChild(row);
+      }
+      logEl.appendChild(frag);
+      while (logEl.childElementCount > MAX_ROWS) logEl.removeChild(logEl.firstChild);
+      if (nearBottom) logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    es.onmessage = (msg) => {
+      let events; try { events = JSON.parse(msg.data); } catch { return; }
+      if (!Array.isArray(events)) events = [events]; // tolerate a lone object
+      for (const e of events) {
+        if (e.type === 'TickCompleted') {
+          const total = e.plantCount + e.herbivoreCount + e.carnivoreCount;
+          statsEl.innerHTML = `t=<b>${e.tick}</b>  P=${e.plantCount} H=${e.herbivoreCount} C=${e.carnivoreCount}  total=<b>${total}</b>`;
+        } else {
+          buffer.push(e); // keep TickCompleted out of the log
+        }
+      }
+      if (buffer.length > 3000) buffer.splice(0, buffer.length - 3000); // safety cap
+      scheduleFlush();
+    };
+
+    document.getElementById('run').onclick = async () => {
+      const ticks = parseInt(document.getElementById('ticks').value, 10) || 5000;
+      buffer = [];
+      logEl.innerHTML = '';
+      statsEl.textContent = `starting ${ticks} ticks…`;
+      try { await fetch('/run?ticks=' + ticks, { method: 'POST' }); }
+      catch { statsEl.textContent = 'run request failed'; }
+    };
+  </script>
+</body>
+</html>

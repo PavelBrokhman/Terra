@@ -77,7 +77,12 @@ The current suite exercises the engine end to end. By file:
 | `OrganismActionTests` | action records (Idle / Move / Eat / Attack / Defend / Reproduce) |
 | `DefaultBehaviorsTests` | reference Plant / Herbivore / Carnivore behavior |
 | `PresentationTests` | human + JSON-Lines formatters, polymorphic event roundtrip |
-| `SimulationTests` | tick loop, movement, death, and **determinism for a fixed seed** |
+| `SimulationTests` | tick loop, movement, death, collision/clip, carcass+rot, camouflage, action feedback, and **determinism for a fixed seed** |
+| `EatActionTests` | herbivore eats plant, full-eater rule, food chunks, diet rules |
+| `CombatTests` | attack/defense rolls, damage, defend, kill threshold, Defended event |
+| `GrowthTests` | growth toward mature radius |
+| `ReproductionTests` | incubation, offspring, cooldown, seed spreading, repro events |
+| `DslTests` | DSL interpreter (signals → actions), priority, loader |
 
 ## Conventions for new tests
 

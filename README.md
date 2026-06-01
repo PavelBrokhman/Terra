@@ -4,17 +4,21 @@ Modern reimagining of Microsoft Research's **Terrarium 2.0** — an AI programmi
 
 ## Status
 
-**Phase 1 MVP** ✅ — console simulation with text + JSON-Lines event streams.
+**Phase 1 + 2** ✅ — full ecosystem mechanics, text + JSON-Lines event streams,
+a **browser viewer** (SSE), and **text-file (DSL) creature behaviour**.
 See [Plans/Phase1_Status.md](Plans/Phase1_Status.md) for what is and isn't implemented.
 
 Quick run:
 
 ```bash
-dotnet run --project src/Terra.Console -- --ticks=100 --seed=42
-dotnet run --project src/Terra.Console -- --help
+# console (text feed)
+dotnet run --project src/Terra.Console -- --ticks=100 --seed=42 --creatures=creatures
+
+# browser viewer — then open http://localhost:5000
+dotnet run --project src/Terra.Web
 ```
 
-98 passing tests, 0 warnings.
+162 passing tests, 0 warnings.
 
 See [RUNNING.md](RUNNING.md) for full build/run instructions and [TESTING.md](TESTING.md) for test guidance.
 
