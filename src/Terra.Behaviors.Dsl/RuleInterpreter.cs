@@ -48,7 +48,7 @@ public sealed class RuleInterpreter : IOrganismBehavior
     private bool SignalActive(string signal, IWorldView s) => signal switch
     {
         "always"               => true,
-        "can_reproduce"        => s.Self.IsMature && s.Self.EnergyState >= EnergyState.Normal && !s.Self.IsIncubating,
+        "can_reproduce"        => s.Self.CanReproduce,
         "hungry"               => s.Self.EnergyState < EnergyState.Normal,
         "not_full"             => s.Self.EnergyState != EnergyState.Full,
         "threat_in_range"      => NearestThreatInAttackRange(s) is not null,

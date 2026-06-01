@@ -17,4 +17,5 @@ public readonly record struct OrganismSnapshot(
     EnergyState EnergyState,
     int FoodChunks,
     bool IsIncubating,
-    bool IsAlive = true);
+    bool IsAlive = true,
+    bool CanReproduce = false);

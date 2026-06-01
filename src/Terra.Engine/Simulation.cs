@@ -485,19 +485,26 @@ public sealed class Simulation
             selfSnapshot, visible, _world.Tick, _world.Width, _world.Height, self.LastAction);
     }
 
-    private static OrganismSnapshot Snapshot(OrganismState s) => new(
-        s.Id,
-        s.Species.Name,
-        s.Species.Kind,
-        s.Position,
-        s.Radius,
-        s.Energy,
-        s.TickAge,
-        s.IsMature,
-        GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius),
-        s.FoodChunks,
-        s.IsIncubating,
-        s.IsAlive);
+    private static OrganismSnapshot Snapshot(OrganismState s)
+    {
+        var energyState = GameRules.ClassifyEnergyState(s.Energy, s.Species.Traits, s.Radius);
+        var canReproduce = s.ReproductionWait == 0 && !s.IsIncubating
+            && s.IsMature && energyState >= EnergyState.Normal;
+        return new(
+            s.Id,
+            s.Species.Name,
+            s.Species.Kind,
+            s.Position,
+            s.Radius,
+            s.Energy,
+            s.TickAge,
+            s.IsMature,
+            energyState,
+            s.FoodChunks,
+            s.IsIncubating,
+            s.IsAlive,
+            canReproduce);
+    }
 
     private sealed class WorldViewImpl(
         OrganismSnapshot self,

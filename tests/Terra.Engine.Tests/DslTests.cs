@@ -10,7 +10,8 @@ public class DslTests
         bool mature = false,
         bool incubating = false) =>
         new(new OrganismId(1), "Self", kind, new Position(100, 100), Radius: 5, Energy: 1000,
-            TickAge: 0, IsMature: mature, EnergyState: energy, FoodChunks: 100, IsIncubating: incubating);
+            TickAge: 0, IsMature: mature, EnergyState: energy, FoodChunks: 100, IsIncubating: incubating,
+            CanReproduce: mature && energy >= EnergyState.Normal && !incubating);
 
     private static OrganismSnapshot Other(
         OrganismId id, Position pos, SpeciesKind kind, bool alive = true, int foodChunks = 100) =>
