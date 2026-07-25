@@ -53,6 +53,7 @@ Design source material (preserved verbatim as reference):
 - [Plans/source/02_Engine_Spec.md](Plans/source/02_Engine_Spec.md) — God-Simulation Engine (full system spec)
 - [Plans/source/03_Balance_Variants.md](Plans/source/03_Balance_Variants.md) — Balance / constraint variants
 - [Plans/source/04_Animal_World_Spec.md](Plans/source/04_Animal_World_Spec.md) — Original "Животный мир" game spec (client-server, microservice behaviour, tick modes)
+- [Plans/source/05_Distributed_God_Game_Concept.md](Plans/source/05_Distributed_God_Game_Concept.md) — Distributed GOD-type game concept (territories, respawn points, game-end condition, AI behaviour)
 
 High-level phases:
 
