@@ -187,8 +187,12 @@ src/
   Terra.Presentation.Text/   human + JSON-Lines event formatters
   Terra.Console/             CLI entry point (text/console)
   Terra.Web/                 ASP.NET Core browser viewer (SSE live feed)
+  Terra.Node/                Phase 3 networking domain — zones, quota,
+                             ownership, spawn policy, tick pacing. Library
+                             only so far: no host to run yet.
 tests/
   Terra.Engine.Tests/        xUnit tests (see TESTING.md)
+  Terra.Node.Tests/          xUnit tests for Terra.Node
 ```
 
 ## Running the published binary (optional)

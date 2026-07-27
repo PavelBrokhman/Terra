@@ -18,7 +18,7 @@ dotnet run --project src/Terra.Console -- --ticks=100 --seed=42 --creatures=crea
 dotnet run --project src/Terra.Web
 ```
 
-162 passing tests, 0 warnings.
+203 passing tests (162 engine + 41 node), 0 warnings.
 
 See [RUNNING.md](RUNNING.md) for full build/run instructions and [TESTING.md](TESTING.md) for test guidance.
 
@@ -33,9 +33,12 @@ Terra/
 │   ├── Terra.Engine/           Core simulation (no dependencies)
 │   ├── Terra.Behaviors.Default/  Reference Plant/Herbivore/Carnivore
 │   ├── Terra.Presentation.Text/  Human + JSON-Lines event formatters
-│   └── Terra.Console/          CLI entry point
+│   ├── Terra.Console/          CLI entry point
+│   ├── Terra.Web/              Browser viewer (SSE)
+│   └── Terra.Node/             Phase 3: zones, quota, spawn policy, tick pacing
 ├── tests/
-│   └── Terra.Engine.Tests/     xUnit tests
+│   ├── Terra.Engine.Tests/     xUnit tests
+│   └── Terra.Node.Tests/       xUnit tests
 ├── legacy/
 │   └── Terrarium2.0/           Original MSR source (reference only)
 └── Terra.sln

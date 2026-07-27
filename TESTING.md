@@ -1,7 +1,9 @@
 # Testing Terra
 
 How to run, filter, and write tests. Tests live in `tests/Terra.Engine.Tests`
-and use **xUnit**.
+(the simulation core, 162) and `tests/Terra.Node.Tests` (Phase 3 networking
+domain — zones, quota, ownership, spawn policy, tick pacing, 41). Both use
+**xUnit**. `dotnet test` from the root runs all 203.
 
 ## Prerequisites
 
@@ -84,10 +86,23 @@ The current suite exercises the engine end to end. By file:
 | `ReproductionTests` | incubation, offspring, cooldown, seed spreading, repro events |
 | `DslTests` | DSL interpreter (signals → actions), priority, loader |
 
+### `tests/Terra.Node.Tests` — Phase 3 networking domain
+
+| Test file | Focus |
+|-----------|-------|
+| `ZoneGridTests` | fixed zone grid: full coverage of the world, issue/release, full-world refusal |
+| `QuotaTests` | borrowed quota: take, overdraw refusal, release, return in full |
+| `OwnerIndexTests` | ownership derived from `Species` **by reference** — identical record definitions from two participants must not merge |
+| `SpawnPlannerTests` | the three spawn policies, no anchor after dying out, bounded retries when packed |
+| `ParticipantRegistryTests` | join/leave, timeout sweep, extinction returning quota + zone |
+| `TickPacerTests` | fixed vs adaptive pacing, floor and ceiling |
+
 ## Conventions for new tests
 
 - **Mirror the structure.** One test class per production type, named
-  `<Type>Tests`, in `tests/Terra.Engine.Tests`.
+  `<Type>Tests`, in the test project matching the source project
+  (`tests/Terra.Engine.Tests` for `src/Terra.Engine`,
+  `tests/Terra.Node.Tests` for `src/Terra.Node`).
 - **Naming.** `MethodOrBehavior_ExpectedResult_Condition`
   (e.g. `Run_IsDeterministic_ForSameSeed`). Keep it descriptive — `--filter`
   matches on these names.
