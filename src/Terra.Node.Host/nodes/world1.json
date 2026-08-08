@@ -1,0 +1,25 @@
+{
+  "name": "world-1",
+  "runSeconds": 0,
+
+  "world": {
+    "accept": true,
+    "selfPlay": false,
+    "listen": "http://localhost:5101",
+
+    "worldName": "World One",
+    "seed": 42,
+    "width": 400,
+    "height": 400,
+    "zoneColumns": 2,
+    "zoneRows": 2,
+    "quotaOnJoin": 24,
+    "seedPerSpecies": 6,
+
+    "tickMode": "Adaptive",
+    "minTickMs": 250,
+    "maxTickMs": 2000,
+    "slack": 1.5,
+    "joinTimeoutSeconds": 15
+  }
+}

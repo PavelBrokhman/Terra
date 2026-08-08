@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Terra.Node.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Terra.Engine\Terra.Engine.csproj" />
+    <ProjectReference Include="..\Terra.Node\Terra.Node.csproj" />
+    <ProjectReference Include="..\Terra.Behaviors.Default\Terra.Behaviors.Default.csproj" />
+    <ProjectReference Include="..\Terra.Presentation.Text\Terra.Presentation.Text.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The Web SDK already picks these up; this only makes them land next to the
+         binary so a config path relative to the output directory resolves. -->
+    <Content Update="nodes\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

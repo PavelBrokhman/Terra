@@ -52,6 +52,19 @@ public sealed class SpawnPlanner(
         return TryNear(anchor.Position, radius, rng, out position);
     }
 
+    /// <summary>
+    /// Place inside a given starting zone, whatever the participant's policy says.
+    /// This is what a *first* appearance needs: the two anchored policies have
+    /// nothing to anchor on until the participant owns something, so arrival
+    /// always happens in the zone the world handed out.
+    /// </summary>
+    public bool TryPlanInZone(Zone zone, int radius, Random rng, out Position position)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        if (radius <= 0) throw new ArgumentOutOfRangeException(nameof(radius), radius, "must be > 0");
+        return TryInZone(zone, radius, rng, out position);
+    }
+
     private Position? FindAnchor(Participant participant, Random rng)
     {
         var mine = owners.LivingOf(world, participant.Id);

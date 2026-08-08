@@ -1,0 +1,40 @@
+{
+  "name": "world-4",
+  "runSeconds": 0,
+
+  "world": {
+    "accept": false,
+    "selfPlay": true,
+
+    "worldName": "World Four",
+    "seed": 99,
+    "width": 300,
+    "height": 300,
+    "zoneColumns": 2,
+    "zoneRows": 2,
+    "quotaOnJoin": 30,
+    "seedPerSpecies": 8,
+
+    "tickMode": "Fixed",
+    "minTickMs": 400,
+    "maxTickMs": 400,
+    "joinTimeoutSeconds": 15,
+
+    "selfPolicy": "AnyOwn",
+    "selfSpecies": [
+      { "name": "FourGrass",  "kind": "Plant" },
+      { "name": "FourGrazer", "kind": "Herbivore" }
+    ]
+  },
+
+  "join": {
+    "worldsFile": "nodes/worlds.json",
+    "worlds": [ "world-1" ],
+    "policy": "AnyOwn",
+    "heartbeatMs": 1500,
+    "species": [
+      { "name": "FourSettlerGrass",  "kind": "Plant" },
+      { "name": "FourSettlerGrazer", "kind": "Herbivore" }
+    ]
+  }
+}

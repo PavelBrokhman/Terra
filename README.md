@@ -8,6 +8,12 @@ Modern reimagining of Microsoft Research's **Terrarium 2.0** — an AI programmi
 a **browser viewer** (SSE), and **text-file (DSL) creature behaviour**.
 See [Plans/Phase1_Status.md](Plans/Phase1_Status.md) for what is and isn't implemented.
 
+**Phase 3, M1** ✅ — networked nodes: a world that others can join, quota and
+starting zones lent out and taken back, spawn policy instead of coordinates, and
+tick pacing that follows the slowest participant. One program in four
+configurations, since there is no server type and no client type — see
+[Plans/Phase3_Milestones.md](Plans/Phase3_Milestones.md).
+
 Quick run:
 
 ```bash
@@ -16,9 +22,12 @@ dotnet run --project src/Terra.Console -- --ticks=100 --seed=42 --creatures=crea
 
 # browser viewer — then open http://localhost:5000
 dotnet run --project src/Terra.Web
+
+# four nodes, one program (four terminals; world 1 first)
+dotnet run --project src/Terra.Node.Host -- --config=nodes/world1.json
 ```
 
-203 passing tests (162 engine + 41 node), 0 warnings.
+224 passing tests (162 engine + 62 node), 0 warnings.
 
 See [RUNNING.md](RUNNING.md) for full build/run instructions and [TESTING.md](TESTING.md) for test guidance.
 
@@ -35,7 +44,10 @@ Terra/
 │   ├── Terra.Presentation.Text/  Human + JSON-Lines event formatters
 │   ├── Terra.Console/          CLI entry point
 │   ├── Terra.Web/              Browser viewer (SSE)
-│   └── Terra.Node/             Phase 3: zones, quota, spawn policy, tick pacing
+│   ├── Terra.Node/             Phase 3: zones, quota, spawn policy, tick pacing,
+│   │                           and the world itself — transport-free
+│   └── Terra.Node.Host/        Phase 3: the node — REST + SSE. One program;
+│                               a config file decides what it is
 ├── tests/
 │   ├── Terra.Engine.Tests/     xUnit tests
 │   └── Terra.Node.Tests/       xUnit tests

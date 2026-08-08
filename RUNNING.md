@@ -177,6 +177,87 @@ editor or JSONL tooling:
 cat runs/run-*.jsonl | jq 'select(.type == "OrganismDied")'   # or Select-String on Windows
 ```
 
+## Nodes — many worlds, many participants (Phase 3, M1)
+
+`Terra.Node.Host` is the networked node. There is **no server build and no client
+build**: it is one program, and a JSON config decides whether it runs a world,
+takes part in other people's worlds, does both, or neither
+([Plans/Phase3_Milestones.md](Plans/Phase3_Milestones.md), T3).
+
+Four ready-made configs live in `src/Terra.Node.Host/nodes/` and cover all four
+combinations:
+
+| Config | Runs a world | Lets others in | Plays | Joins world 1 |
+|---|---|---|---|---|
+| `world1.json` | yes | **yes** | no | no |
+| `world2.json` | yes | no | yes | no |
+| `world3.json` | no | — | — | **yes** |
+| `world4.json` | yes | no | yes | **yes** |
+
+Run them in four terminals (world 1 first — the others wait for it anyway):
+
+```bash
+dotnet run --project src/Terra.Node.Host -- --config=nodes/world1.json
+dotnet run --project src/Terra.Node.Host -- --config=nodes/world2.json
+dotnet run --project src/Terra.Node.Host -- --config=nodes/world3.json
+dotnet run --project src/Terra.Node.Host -- --config=nodes/world4.json
+```
+
+`--seconds=N` bounds a run so it stops by itself — useful for a demo, and it
+keeps a forgotten node from living on in the background. Without it a node runs
+until Ctrl+C.
+
+**Where the list of worlds comes from.** `nodes/worlds.json` maps world ids to
+endpoints, and that is the whole of discovery in M1 — the original's
+`UseConfigForDiscovery` mode, kept because a file is enough. One endpoint is one
+world; there is no "channel" inside a server.
+
+**Config keys.** `world` is the world this node runs; `join` is the worlds it
+enters. Either may be omitted.
+
+| Key | Meaning |
+|---|---|
+| `world.accept` / `world.listen` | let others in, and where to listen |
+| `world.selfPlay` / `world.selfSpecies` / `world.selfPolicy` | whether this node also plays in its own world, with what, and where new organisms reach for |
+| `world.zoneColumns` / `world.zoneRows` | the fixed grid of *starting* zones; a full world refuses joins |
+| `world.quotaOnJoin` / `world.seedPerSpecies` | quota lent to a newcomer, and how many of each species are placed on arrival |
+| `world.tickMode` / `world.minTickMs` / `world.maxTickMs` / `world.slack` | `Fixed` or `Adaptive` pacing. Adaptive stretches toward the slowest participant's reported round-trip, bounded at both ends |
+| `world.joinTimeoutSeconds` | how long a participant may go unheard before being dropped |
+| `join.worlds` / `join.worldsFile` | which worlds to enter, and the file naming them |
+| `join.policy` / `join.species` | spawn policy and species to ask for |
+| `join.topUpAfterSeconds` / `join.topUpCount` | add more by hand once, to exercise top-ups |
+
+Tick length is the **owner's** setting, including an owner who sets something
+unusable: nothing substitutes a safer default behind their back (T7).
+
+### The HTTP surface
+
+Control is REST, the state stream is SSE — the same feed shape the browser
+viewer uses. Any client that speaks JSON can join a world; the DTOs are not
+special to this assembly.
+
+| Route | Purpose |
+|---|---|
+| `GET /world` | conditions, published **before** anyone connects — a participant reads the terms and decides for itself |
+| `POST /world/participants` | join: name, species, spawn policy → participant id, starting zone, quota |
+| `GET /world/participants` | who is connected right now |
+| `POST /world/participants/{id}/heartbeat` | stay known; the body carries the participant's own observed round-trip, which is what adaptive pacing follows |
+| `POST /world/participants/{id}/policy` | change where new organisms reach for |
+| `POST /world/participants/{id}/organisms` | manual top-up, anchored on a **living organism**, never a coordinate |
+| `DELETE /world/participants/{id}` | leave; quota and zone go back at once |
+| `GET /world/events` | SSE: one message per tick with that tick's events, plus join/leave/die-out messages |
+
+**What the world takes back, and when.** A quota is lent, not owned. It returns
+in full when a participant leaves, when they go quiet past the timeout, or when
+their last organism dies — and getting back in after dying out is a fresh join,
+not an automatic respawn. Watching for that is the participant's own job.
+
+What does **not** come back is the organisms themselves: they stay alive and keep
+reproducing, simply owned by nobody. A departing participant leaves a population
+behind in the world. That follows from there being no territory and no ownership,
+but it does mean a world can carry populations that count against no one's quota
+— an open point, noted in [Plans/Phase3_Milestones.md](Plans/Phase3_Milestones.md).
+
 ## Project layout
 
 ```
@@ -188,8 +269,10 @@ src/
   Terra.Console/             CLI entry point (text/console)
   Terra.Web/                 ASP.NET Core browser viewer (SSE live feed)
   Terra.Node/                Phase 3 networking domain — zones, quota,
-                             ownership, spawn policy, tick pacing. Library
-                             only so far: no host to run yet.
+                             ownership, spawn policy, tick pacing, and the
+                             world itself (WorldHost). Transport-free.
+  Terra.Node.Host/           Phase 3 node — REST + SSE around Terra.Node.
+                             One program; a config file decides what it is.
 tests/
   Terra.Engine.Tests/        xUnit tests (see TESTING.md)
   Terra.Node.Tests/          xUnit tests for Terra.Node

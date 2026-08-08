@@ -1,0 +1,30 @@
+{
+  "name": "world-2",
+  "runSeconds": 0,
+
+  "world": {
+    "accept": false,
+    "selfPlay": true,
+
+    "worldName": "World Two",
+    "seed": 7,
+    "width": 300,
+    "height": 300,
+    "zoneColumns": 2,
+    "zoneRows": 2,
+    "quotaOnJoin": 30,
+    "seedPerSpecies": 8,
+
+    "tickMode": "Fixed",
+    "minTickMs": 300,
+    "maxTickMs": 300,
+    "joinTimeoutSeconds": 15,
+
+    "selfPolicy": "LargestCluster",
+    "selfSpecies": [
+      { "name": "TwoGrass",  "kind": "Plant" },
+      { "name": "TwoGrazer", "kind": "Herbivore" },
+      { "name": "TwoHunter", "kind": "Carnivore" }
+    ]
+  }
+}

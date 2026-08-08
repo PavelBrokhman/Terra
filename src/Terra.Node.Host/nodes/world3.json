@@ -1,0 +1,17 @@
+{
+  "name": "world-3",
+  "runSeconds": 0,
+
+  "join": {
+    "worldsFile": "nodes/worlds.json",
+    "worlds": [ "world-1" ],
+    "policy": "StartZone",
+    "heartbeatMs": 1500,
+    "topUpAfterSeconds": 12,
+    "topUpCount": 3,
+    "species": [
+      { "name": "ThreeGrass",  "kind": "Plant" },
+      { "name": "ThreeGrazer", "kind": "Herbivore" }
+    ]
+  }
+}

@@ -2,8 +2,9 @@
 
 How to run, filter, and write tests. Tests live in `tests/Terra.Engine.Tests`
 (the simulation core, 162) and `tests/Terra.Node.Tests` (Phase 3 networking
-domain — zones, quota, ownership, spawn policy, tick pacing, 41). Both use
-**xUnit**. `dotnet test` from the root runs all 203.
+domain — zones, quota, ownership, spawn policy, tick pacing, and the world
+participants join, 62). Both use **xUnit**. `dotnet test` from the root runs
+all 224.
 
 ## Prerequisites
 
@@ -96,6 +97,11 @@ The current suite exercises the engine end to end. By file:
 | `SpawnPlannerTests` | the three spawn policies, no anchor after dying out, bounded retries when packed |
 | `ParticipantRegistryTests` | join/leave, timeout sweep, extinction returning quota + zone |
 | `TickPacerTests` | fixed vs adaptive pacing, floor and ceiling |
+| `WorldHostTests` | the world as participants meet it: joining, arrival landing in the granted zone, full-world refusal, quota tracking the living, dying out, going quiet, manual top-ups and their refusals, and a node playing in its own world never being timed out |
+
+> `WorldHostTests` covers M1's behaviour **without transport**, which is the point
+> of keeping `WorldHost` in `Terra.Node`: the REST/SSE layer in `Terra.Node.Host`
+> only forwards, so there is nothing there that a socket is needed to test.
 
 ## Conventions for new tests
 
